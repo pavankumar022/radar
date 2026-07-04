@@ -95,7 +95,7 @@ Create a `.env` file in the `radar/` folder using the template:
 
 ```env
 GEMINI_API_KEY=your_gemini_api_key_here
-BACKEND_PORT=8000
+BACKEND_PORT=8080
 FRONTEND_ORIGIN=http://localhost:5173
 LOG_LEVEL=info
 ```
@@ -104,7 +104,7 @@ LOG_LEVEL=info
 
 ```bash
 # From the radar/ directory
-.venv\Scripts\uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+.venv\Scripts\uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
 ```
 
 The server will automatically initialize the database (`radar.db`) and seed it with 5,000 baseline historical events.

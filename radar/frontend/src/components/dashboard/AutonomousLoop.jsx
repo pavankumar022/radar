@@ -54,29 +54,25 @@ export default function AutonomousLoopStatus() {
         </span>
       </div>
 
-      <div className="flex items-center gap-1">
+      <div className="grid grid-cols-5 gap-1">
         {STAGES.map((stage, i) => {
           const isActive = i === activeIdx
           const isPast = i < activeIdx
           return (
-            <div key={stage} className="flex items-center gap-1 flex-1">
-              <div
-                className={`flex flex-col items-center gap-1 flex-1 p-2 rounded transition-all duration-300 ${
-                  isActive
-                    ? 'bg-primary/15 border border-primary/30 text-primary shadow-glow-sm'
-                    : isPast
-                    ? 'text-secondary/60'
-                    : 'text-on-surface-variant/40'
-                }`}
-              >
-                <div className={isActive ? 'animate-pulse' : ''}>
-                  {STAGE_ICONS[stage]}
-                </div>
-                <span className="mono-label text-[9px]">{stage}</span>
+            <div
+              key={stage}
+              className={`flex flex-col items-center gap-1 p-1.5 rounded transition-all duration-300 ${
+                isActive
+                  ? 'bg-primary/15 border border-primary/30 text-primary shadow-glow-sm'
+                  : isPast
+                  ? 'text-secondary/60'
+                  : 'text-on-surface-variant/40'
+              }`}
+            >
+              <div className={isActive ? 'animate-pulse' : ''}>
+                {STAGE_ICONS[stage]}
               </div>
-              {i < STAGES.length - 1 && (
-                <div className={`w-4 h-0.5 shrink-0 rounded ${i < activeIdx ? 'bg-primary/40' : 'bg-surface-high'}`} />
-              )}
+              <span className="mono-label text-[8px] tracking-tighter text-center block w-full truncate">{stage}</span>
             </div>
           )
         })}
