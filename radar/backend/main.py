@@ -66,9 +66,13 @@ async def on_startup():
     try:
         current_settings = await db.get_settings()
         app_state.synthetic_delay = float(current_settings.get("synthetic_delay", 3.0))
+        app_state.input_mode = current_settings.get("input_mode", "synthetic")
+        app_state.monitoring_active = bool(current_settings.get("monitoring_active", True))
     except Exception as e:
-        log.warning(f"Failed to load synthetic delay settings on startup: {e}")
+        log.warning(f"Failed to load settings on startup: {e}")
         app_state.synthetic_delay = 3.0
+        app_state.input_mode = "synthetic"
+        app_state.monitoring_active = True
 
     # Start synthetic event generator
     app_state.feed_state = "LOADING_SYNTHETIC"
@@ -98,7 +102,7 @@ async def start_event_generator():
     from backend.routers.alerts import broadcast_event
 
     log.info("Synthetic event generator starting...")
-    app_state.feed_state = "SYNTHETIC_FEED"
+    app_state.feed_state = "SYNTHETIC_FEED" if app_state.input_mode == "synthetic" else "LIVE_FEED_ACTIVE"
 
     try:
         async for event in generate_events():
@@ -107,10 +111,10 @@ async def start_event_generator():
                 app_state.feed_state = "SYSTEM_STANDBY"
                 while not app_state.monitoring_active:
                     await asyncio.sleep(1.0)
-                app_state.feed_state = "SYNTHETIC_FEED"
+                app_state.feed_state = "SYNTHETIC_FEED" if app_state.input_mode == "synthetic" else "LIVE_FEED_ACTIVE"
 
-            if app_state.input_mode != "synthetic":
-                # Non-synthetic mode — pause generation but keep loop alive
+            if app_state.input_mode not in ("synthetic", "target_ip"):
+                # Non-generating mode — pause generation but keep loop alive
                 await asyncio.sleep(2.0)
                 continue
 

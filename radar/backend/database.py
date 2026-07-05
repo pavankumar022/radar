@@ -304,6 +304,13 @@ async def save_settings(data: dict) -> None:
         await db.commit()
 
 
+async def clear_all_events() -> None:
+    async with aiosqlite.connect(DB_PATH) as db:
+        await db.execute("DELETE FROM events")
+        await db.execute("DELETE FROM playbooks")
+        await db.commit()
+
+
 # ─── Geo Cache ────────────────────────────────────────────────────────────────
 
 async def get_geo_cache(ip: str) -> Optional[dict]:

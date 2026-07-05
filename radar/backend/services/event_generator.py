@@ -144,19 +144,42 @@ _weights = [t["weight"] for t in _EVENT_TEMPLATES]
 
 def _make_event(source_ip: str | None = None) -> dict:
     """Generate a single synthetic event dict."""
+    from backend.state import app_state
     template = random.choices(_EVENT_TEMPLATES, weights=_weights, k=1)[0]
-    src_ip = source_ip or random.choice(_ATTACKER_IPS + _INTERNAL_IPS)
+    
+    if app_state.input_mode == "target_ip" and app_state.monitored_ips:
+        dst_ip = random.choice(app_state.monitored_ips)
+        src_ip = source_ip or random.choice(_ATTACKER_IPS)
+        description = f"{template['description']} [Target Node: {dst_ip}]"
+        raw_payload = {
+            "surveillance": "TARGET_IP_SURVEILLANCE",
+            "target_ip": dst_ip,
+            "attacker_ip": src_ip,
+            "event_type": template["event_type"],
+            "severity": template["severity"],
+            "technique_id": template["technique_id"],
+            "protocol": random.choice(["TCP/445 (SMB)", "TCP/3389 (RDP)", "TCP/22 (SSH)", "HTTP/8080", "UDP/53 (DNS)"]),
+            "target_os": "Windows Server / Workstation",
+            "process_name": random.choice(["powershell.exe", "svchost.exe", "lsass.exe", "cmd.exe", "nmap.exe"]),
+            "signature": f"SIG-{template['event_type']}-DETECTED",
+        }
+    else:
+        src_ip = source_ip or random.choice(_ATTACKER_IPS + _INTERNAL_IPS)
+        dst_ip = random.choice(_DEST_TARGETS)
+        description = template["description"]
+        raw_payload = {"simulated": True, "template_weight": template["weight"]}
+
     return {
         "id": str(uuid.uuid4()),
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "source_ip": src_ip,
-        "destination_ip": random.choice(_DEST_TARGETS),
+        "destination_ip": dst_ip,
         "event_type": template["event_type"],
         "severity": template["severity"],
         "technique_id": template["technique_id"],
         "tactic": None,   # filled in by generator via MITRE lookup
-        "description": template["description"],
-        "raw_payload": {"simulated": True, "template_weight": template["weight"]},
+        "description": description,
+        "raw_payload": raw_payload,
         "playbook_generated": False,
         "lat": None, "lon": None, "country": None, "city": None,
     }

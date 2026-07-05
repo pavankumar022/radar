@@ -17,6 +17,7 @@ class AppState:
     start_time: float = field(default_factory=time.monotonic)
     generator_task: Optional[asyncio.Task] = field(default=None, repr=False)
     synthetic_delay: float = 3.0
+    monitored_ips: list[str] = field(default_factory=lambda: ["192.168.1.100"])
 
 
 app_state = AppState()

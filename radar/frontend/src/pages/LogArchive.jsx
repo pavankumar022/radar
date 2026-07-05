@@ -75,6 +75,19 @@ export default function LogArchive() {
     }
   }
 
+  const handleClearAll = async () => {
+    if (!window.confirm("Are you sure you want to clear all logged events? This will also stop replay and clear the incidents.")) return
+    try {
+      await api.logs.clear()
+      setEvents([])
+      setTotal(0)
+      setTotalPages(1)
+      setPage(1)
+    } catch (e) {
+      console.error('Failed to clear logs:', e)
+    }
+  }
+
   const pages = (() => {
     const p = []
     if (totalPages <= 7) {
@@ -123,6 +136,13 @@ export default function LogArchive() {
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
             Upload Logs
+          </button>
+          <button
+            onClick={handleClearAll}
+            className="px-3 py-1.5 bg-critical/15 text-critical border border-critical/30 rounded hover:bg-critical/25 transition-all text-xs font-mono font-bold"
+            id="log-clear-btn"
+          >
+            CLEAR LOGS
           </button>
         </div>
       </div>

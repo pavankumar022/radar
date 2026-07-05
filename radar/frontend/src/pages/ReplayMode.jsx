@@ -57,6 +57,23 @@ export default function ReplayMode() {
     finally { setLoading(false) }
   }
 
+  const handleClearAll = async () => {
+    if (!window.confirm("Are you sure you want to clear all events? This will stop replay and clear the log archive.")) return
+    try {
+      await api.logs.clear()
+      setReplayStatus({
+        active: false,
+        speed_multiplier: 1.0,
+        current_index: 0,
+        total_events: 0,
+        elapsed_seconds: 0,
+        buffer_percent: 0
+      })
+    } catch (e) {
+      console.error('Failed to clear events:', e)
+    }
+  }
+
   const progressPct = replayStatus.total_events > 0
     ? (replayStatus.current_index / replayStatus.total_events) * 100
     : 0
@@ -99,6 +116,13 @@ export default function ReplayMode() {
                   REPLAY SPEED: {replayStatus.speed_multiplier}X
                 </span>
               </div>
+              <button
+                onClick={handleClearAll}
+                className="px-2.5 py-1 bg-critical/15 text-critical border border-critical/30 rounded hover:bg-critical/25 transition-all text-xs font-mono font-bold"
+                id="clear-all-replay-btn"
+              >
+                CLEAR ALL EVENTS
+              </button>
             </div>
 
             {/* Visualization area */}

@@ -11,6 +11,13 @@ const MAX_ALERTS = 200   // Keep last 200 alerts in memory
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
+// Seed inputMode from sessionStorage — survives intra-session navigation,
+// resets when the tab/session is closed (sessionStorage is per-tab).
+const _sessionMode = sessionStorage.getItem('radar_input_mode') || 'synthetic'
+const _sessionFile = (() => {
+  try { return JSON.parse(sessionStorage.getItem('radar_upload_file') || 'null') } catch { return null }
+})()
+
 const initialState = {
   // Connection
   wsConnected: false,
@@ -18,9 +25,12 @@ const initialState = {
   // System status (driven by backend)
   feedState: 'LOADING_SYNTHETIC',
   monitoringActive: true,
-  inputMode: 'synthetic',
+  inputMode: _sessionMode,
   uptimeSeconds: 0,
   wsClients: 0,
+
+  // File upload info — persists for the session
+  uploadFile: _sessionFile,  // { name: string, count: number } | null
 
   // Alerts
   alerts: [],
@@ -51,15 +61,38 @@ function reducer(state, action) {
     case 'WS_DISCONNECTED':
       return { ...state, wsConnected: false, feedState: 'LOADING_SYNTHETIC' }
 
-    case 'STATUS_UPDATE':
+    case 'STATUS_UPDATE': {
+      // Backend status messages may include input_mode — only apply it if the
+      // user hasn't already made a session-local selection (sessionStorage wins).
+      const sessionMode = sessionStorage.getItem('radar_input_mode')
+      const backendMode = action.payload.input_mode
+      const nextMode = sessionMode || backendMode || state.inputMode
       return {
         ...state,
         feedState: action.payload.feed_state ?? state.feedState,
         monitoringActive: action.payload.monitoring_active ?? state.monitoringActive,
-        inputMode: action.payload.input_mode ?? state.inputMode,
+        inputMode: nextMode,
         uptimeSeconds: action.payload.uptime_seconds ?? state.uptimeSeconds,
         wsClients: action.payload.ws_clients ?? state.wsClients,
       }
+    }
+
+    case 'SET_INPUT_MODE': {
+      // Explicit user selection — write to sessionStorage so it survives navigation
+      sessionStorage.setItem('radar_input_mode', action.payload)
+      // Clear upload file info when switching away from upload mode
+      if (action.payload !== 'upload') {
+        sessionStorage.removeItem('radar_upload_file')
+        return { ...state, inputMode: action.payload, uploadFile: null }
+      }
+      return { ...state, inputMode: action.payload }
+    }
+
+    case 'SET_UPLOAD_FILE': {
+      // Store uploaded file info for display across navigation
+      sessionStorage.setItem('radar_upload_file', JSON.stringify(action.payload))
+      return { ...state, uploadFile: action.payload }
+    }
 
     case 'NEW_ALERT': {
       // Prepend new alert (newest first), cap at MAX_ALERTS
@@ -94,6 +127,20 @@ function reducer(state, action) {
         loopDetail: action.payload.detail ?? null,
       }
 
+    case 'CLEAR_ALL':
+      return {
+        ...state,
+        alerts: [],
+        stats: {
+          total_alerts: 0,
+          critical_count: 0,
+          false_positive_count: 0,
+          correlated_incidents: 0,
+          events_per_sec: 0,
+        },
+        mitreTactics: {}
+      }
+
     default:
       return state
   }
@@ -125,6 +172,9 @@ export function StoreProvider({ children }) {
         break
       case 'loop_stage':
         dispatch({ type: 'LOOP_STAGE', payload: msg.payload })
+        break
+      case 'clear_all':
+        dispatch({ type: 'CLEAR_ALL' })
         break
     }
   }, [])

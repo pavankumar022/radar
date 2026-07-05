@@ -40,7 +40,10 @@ async def start_replay(body: dict):
 async def stop_replay():
     """Stop active replay session."""
     await replay_engine.stop()
-    app_state.feed_state = "SYNTHETIC_FEED" if app_state.monitoring_active else "SYSTEM_STANDBY"
+    if app_state.monitoring_active:
+        app_state.feed_state = "SYNTHETIC_FEED" if app_state.input_mode == "synthetic" else "LIVE_FEED_ACTIVE"
+    else:
+        app_state.feed_state = "SYSTEM_STANDBY"
     return {"status": "stopped", **replay_engine.status}
 
 

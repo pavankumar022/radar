@@ -57,6 +57,10 @@ async def update_settings(body: dict):
         if "synthetic_delay" in body:
             app_state.synthetic_delay = float(body["synthetic_delay"])
 
+        # Apply monitored_ips change
+        if "monitored_ips" in body and isinstance(body["monitored_ips"], list):
+            app_state.monitored_ips = body["monitored_ips"]
+
         # Broadcast updated status
         await manager.broadcast({
             "type": "status",
@@ -84,7 +88,7 @@ async def toggle_shield(body: dict):
     app_state.monitoring_active = active
 
     if active:
-        app_state.feed_state = "SYNTHETIC_FEED"
+        app_state.feed_state = "SYNTHETIC_FEED" if app_state.input_mode == "synthetic" else "LIVE_FEED_ACTIVE"
         # Restart generator if it was stopped
         _maybe_restart_generator()
     else:
@@ -121,8 +125,8 @@ def _default_settings() -> dict:
             "anomaly_detection": 88,
             "lateral_movement": 42,
         },
-        "ip_whitelist": ["192.168.1.1", "10.0.0.55", "172.16.254.1"],
-        "monitored_ips": ["10.0.1.55", "10.0.4.112", "192.168.1.100"],
+        "ip_whitelist": [],
+        "monitored_ips": ["192.168.1.100"],
         "synthetic_delay": 3.0,
         "input_mode": "synthetic",
         "ai_provider": "gemini",

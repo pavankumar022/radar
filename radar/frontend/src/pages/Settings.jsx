@@ -3,16 +3,15 @@
  * Live config: detection thresholds, IP whitelist, input mode, AI provider.
  * Offline fallback: if API fails, shows defaults instead of hanging.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { api } from '../lib/api'
 import { useStore } from '../lib/store'
 
 const DEFAULT_SETTINGS = {
   detection_thresholds: { general_sensitivity: 74, anomaly_detection: 88, lateral_movement: 42 },
-  ip_whitelist: ['192.168.1.1', '10.0.0.55', '172.16.254.1'],
-  monitored_ips: ['10.0.1.55', '10.0.4.112', '192.168.1.100'],
+  ip_whitelist: [],
+  monitored_ips: ['192.168.1.100'],
   synthetic_delay: 3.0,
-  input_mode: 'synthetic',
   ai_provider: 'gemini',
   monitoring_active: true,
 }
@@ -39,8 +38,8 @@ function ThresholdSlider({ label, value, onChange }) {
 
 const INPUT_MODES = [
   { id: 'synthetic', label: 'Synthetic', icon: '⚙', desc: 'AI-generated events' },
-  { id: 'upload', label: 'File Upload', icon: '📁', desc: 'JSON/NDJSON logs' },
-  { id: 'stream', label: 'Live Stream', icon: '📡', desc: 'Filebeat HTTP' },
+  { id: 'upload', label: 'File Upload', icon: '📁', desc: 'JSON/NDJSON/Log files' },
+  { id: 'target_ip', label: 'Add IP', icon: '🎯', desc: 'Target IP Monitor' },
 ]
 
 export default function Settings() {
@@ -51,10 +50,26 @@ export default function Settings() {
   const [offline, setOffline] = useState(false)
   const [newIp, setNewIp] = useState('')
   const [newMonitoredIp, setNewMonitoredIp] = useState('')
+  const [uploading, setUploading] = useState(false)
+
+  // Per-mode isolated error state — errors from one mode never bleed into another
+  const [modeErrors, setModeErrors] = useState({ synthetic: null, upload: null, target_ip: null })
+
+  const setModeError = (modeId, msg) =>
+    setModeErrors(prev => ({ ...prev, [modeId]: msg }))
+
+  const clearModeError = (modeId) =>
+    setModeErrors(prev => ({ ...prev, [modeId]: null }))
+
+  // Hidden file input ref — clicking the File Upload card triggers this
+  const fileInputRef = useRef(null)
 
   useEffect(() => {
     api.settings.get()
-      .then(data => { setSettings({ ...DEFAULT_SETTINGS, ...data }); setOffline(false) })
+      .then(data => {
+        setSettings(prev => ({ ...prev, ...data }))
+        setOffline(false)
+      })
       .catch(() => { setOffline(true) })
   }, [])
 
@@ -72,11 +87,74 @@ export default function Settings() {
     })
   }
 
+  // ─── Input Mode Logic ──────────────────────────────────────────────────────
+
+  /**
+   * Handle mode card click.
+   * Immediately updates global state so card selection is reflected instantly.
+   * For 'upload', also opens the OS file picker.
+   */
+  const handleModeClick = (modeId) => {
+    clearModeError(modeId)
+    dispatch({ type: 'SET_INPUT_MODE', payload: modeId })
+    api.settings.update({ ...settings, input_mode: modeId }).catch(() => {})
+    if (modeId === 'upload') {
+      fileInputRef.current?.click()
+    }
+  }
+
+  /**
+   * Called when the user picks a file (or cancels).
+   */
+  const handleFileChange = async (e) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+
+    if (!file) {
+      return
+    }
+
+    const fname = file.name.toLowerCase()
+    const validExts = ['.json', '.ndjson', '.jsonl', '.txt', '.log', '.csv']
+    if (!validExts.some(ext => fname.endsWith(ext))) {
+      setModeError('upload', `Unsupported format. Please select a ${validExts.join(', ')} file.`)
+      return
+    }
+
+    setUploading(true)
+    clearModeError('upload')
+
+    try {
+      const result = await api.logs.upload(file)
+      const count = result.events_queued ?? 0
+      dispatch({ type: 'SET_INPUT_MODE', payload: 'upload' })
+      dispatch({ type: 'SET_UPLOAD_FILE', payload: { name: file.name, count } })
+    } catch (err) {
+      const raw = err.message || ''
+      let friendly = 'Upload failed — check file format and try again.'
+      if (raw.includes('400')) {
+        const match = raw.match(/400[: ]+(.+)/)
+        const detail = match?.[1]?.trim()
+        if (detail && detail.length < 120) {
+          friendly = detail
+        } else {
+          friendly = 'Invalid file — ensure it is a valid JSON array or NDJSON (one object per line).'
+        }
+      } else if (raw.includes('404')) {
+        friendly = 'Upload endpoint not found (404) — check backend server.'
+      }
+      setModeError('upload', friendly)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  // ─── Save (non-mode settings) ──────────────────────────────────────────────
+
   const handleSave = async () => {
     setSaving(true)
     try {
-      await api.settings.update(settings)
-      dispatch({ type: 'STATUS_UPDATE', payload: { input_mode: settings.input_mode } })
+      await api.settings.update({ ...settings, input_mode: state.inputMode })
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch (e) {
@@ -99,14 +177,20 @@ export default function Settings() {
 
   const addMonitoredIp = () => {
     const ip = newMonitoredIp.trim()
-    if (!ip || settings.monitored_ips.includes(ip)) return
-    set('monitored_ips', [...settings.monitored_ips, ip])
+    if (!ip || (settings.monitored_ips || []).includes(ip)) return
+    const updated = [...(settings.monitored_ips || []), ip]
+    set('monitored_ips', updated)
     setNewMonitoredIp('')
+    api.settings.update({ ...settings, monitored_ips: updated, input_mode: state.inputMode }).catch(() => {})
   }
 
   const removeMonitoredIp = (ip) => {
-    set('monitored_ips', settings.monitored_ips.filter(x => x !== ip))
+    const updated = (settings.monitored_ips || []).filter(x => x !== ip)
+    set('monitored_ips', updated)
+    api.settings.update({ ...settings, monitored_ips: updated, input_mode: state.inputMode }).catch(() => {})
   }
+
+  const activeMode = state.inputMode
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -152,7 +236,7 @@ export default function Settings() {
             <p className="text-on-surface-variant text-sm">Requests from these addresses will not trigger alerts.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            {settings.ip_whitelist.map(ip => (
+            {(settings.ip_whitelist || []).map(ip => (
               <span
                 key={ip}
                 className="flex items-center gap-1.5 px-2.5 py-1 rounded border border-outline/30 bg-surface-high mono-data text-xs text-on-surface"
@@ -170,7 +254,7 @@ export default function Settings() {
           <div className="flex gap-2">
             <input
               type="text"
-              placeholder="Enter IP address (e.g. 1.1.1.1)"
+              placeholder="Enter IP address (e.g. 192.168.1.1)"
               value={newIp}
               onChange={e => setNewIp(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && addIp()}
@@ -181,77 +265,81 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* Monitored Targets */}
-        <div className="card p-5 space-y-4">
-          <div>
-            <h2 className="font-semibold text-on-surface">Monitored Target IPs</h2>
-            <p className="text-on-surface-variant text-sm">Target nodes currently under active surveillance and log collection.</p>
-          </div>
-          <div className="space-y-2">
-            {(settings.monitored_ips || []).map(ip => (
-              <div
-                key={ip}
-                className="flex items-center justify-between px-3 py-2.5 rounded border border-outline/20 bg-surface-low text-xs text-on-surface animate-fade-in"
-              >
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-secondary pulse-dot" />
-                  <span className="mono-data font-bold">{ip}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <span className="mono-label text-secondary text-[10px]">MONITORING ACTIVE</span>
-                  <button
-                    onClick={() => removeMonitoredIp(ip)}
-                    className="px-2 py-1 rounded bg-critical/15 text-critical border border-critical/30 hover:bg-critical/25 text-[10px] font-mono transition-all"
-                  >
-                    DISCONNECT
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              placeholder="Enter Target IP (e.g. 10.0.1.99)"
-              value={newMonitoredIp}
-              onChange={e => setNewMonitoredIp(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && addMonitoredIp()}
-              className="flex-1 bg-surface-lowest border border-outline/30 rounded px-3 py-2 mono-data text-sm text-on-surface placeholder-outline focus:outline-none focus:border-primary/50"
-              id="ip-monitored-input"
-            />
-            <button onClick={addMonitoredIp} className="btn-primary text-xs" id="connect-ip-btn">+ CONNECT IP</button>
-          </div>
-        </div>
-
         {/* Input Mode */}
         <div className="card p-5 space-y-4">
           <div>
             <h2 className="font-semibold text-on-surface">Input Mode</h2>
             <p className="text-on-surface-variant text-sm">Select the primary telemetry source.</p>
           </div>
+
+          {/* Hidden file input */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".json,.ndjson,.jsonl,.txt,.log,.csv"
+            className="hidden"
+            aria-hidden="true"
+            id="file-upload-input"
+            onChange={handleFileChange}
+          />
+
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {INPUT_MODES.map(mode => (
               <button
                 key={mode.id}
-                onClick={() => set('input_mode', mode.id)}
+                onClick={() => handleModeClick(mode.id)}
+                disabled={mode.id === 'upload' && uploading}
                 className={`p-4 rounded-lg border flex flex-col items-center gap-2 transition-all ${
-                  settings.input_mode === mode.id
+                  activeMode === mode.id
                     ? 'bg-primary/15 border-primary/40 text-primary shadow-glow-sm'
                     : 'bg-surface-low border-outline/20 text-on-surface-variant hover:border-outline/40'
-                }`}
+                } disabled:opacity-50 disabled:cursor-wait`}
                 id={`mode-${mode.id}`}
               >
-                {settings.input_mode === mode.id && (
+                {activeMode === mode.id && (
                   <span className="self-end text-xs">✓</span>
                 )}
-                <span className="text-2xl">{mode.icon}</span>
+                <span className="text-2xl">
+                  {mode.id === 'upload' && uploading ? '⏳' : mode.icon}
+                </span>
                 <span className="font-semibold text-sm">{mode.label}</span>
-                <span className="text-xs opacity-70">{mode.desc}</span>
+                <span className="text-xs opacity-70">
+                  {mode.id === 'upload' && uploading ? 'Uploading…' : mode.desc}
+                </span>
               </button>
             ))}
           </div>
 
-          {settings.input_mode === 'synthetic' && (
+          {/* Upload error */}
+          {modeErrors.upload && (
+            <div className="px-3 py-2 rounded border border-critical/30 bg-critical/10 text-critical text-xs mono-data fade-in">
+              ✗ {modeErrors.upload}
+            </div>
+          )}
+
+          {/* File Upload — success badge */}
+          {activeMode === 'upload' && state.uploadFile && !uploading && (
+            <div className="flex items-center gap-2 px-3 py-2.5 rounded border border-secondary/30 bg-secondary/10 fade-in">
+              <span className="text-secondary text-sm">📄</span>
+              <div className="flex-1 min-w-0">
+                <p className="mono-data text-secondary text-xs font-bold truncate">
+                  {state.uploadFile.name}
+                </p>
+                <p className="mono-label text-on-surface-variant text-[10px]">
+                  {state.uploadFile.count.toLocaleString()} events loaded
+                </p>
+              </div>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="px-2 py-1 rounded border border-outline/20 bg-surface-low text-on-surface-variant hover:border-outline/40 text-[10px] font-mono transition-all whitespace-nowrap"
+              >
+                CHANGE FILE
+              </button>
+            </div>
+          )}
+
+          {/* Synthetic — pacing delay slider */}
+          {activeMode === 'synthetic' && (
             <div className="space-y-2 pt-4 border-t border-primary/10 fade-in">
               <div className="flex items-center justify-between">
                 <p className="mono-label text-on-surface-variant">Synthetic Pacing Delay</p>
@@ -270,6 +358,54 @@ export default function Settings() {
               <p className="text-[11px] text-on-surface-variant">
                 Controls the time gap between simulated threat events. A larger delay (e.g. 3.0s) allows stable reading and analysis of incoming alerts.
               </p>
+            </div>
+          )}
+
+          {/* IP Target Monitor Mode — target IP input and live surveillance list */}
+          {activeMode === 'target_ip' && (
+            <div className="space-y-4 pt-4 border-t border-primary/10 fade-in">
+              <div>
+                <h3 className="font-semibold text-sm text-on-surface">Target IP Surveillance</h3>
+                <p className="text-on-surface-variant text-xs mt-0.5">
+                  Enter target machine IP addresses (e.g. Windows workstation/server IP) to monitor real-time attack vectors (Brute Force, Nmap scans, Exploits).
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {(settings.monitored_ips || []).map(ip => (
+                  <div
+                    key={ip}
+                    className="flex items-center justify-between px-3 py-2.5 rounded border border-outline/20 bg-surface-low text-xs text-on-surface animate-fade-in"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-secondary pulse-dot" />
+                      <span className="mono-data font-bold">{ip}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="mono-label text-secondary text-[10px]">LIVE SURVEILLANCE ACTIVE</span>
+                      <button
+                        onClick={() => removeMonitoredIp(ip)}
+                        className="px-2 py-1 rounded bg-critical/15 text-critical border border-critical/30 hover:bg-critical/25 text-[10px] font-mono transition-all"
+                      >
+                        DISCONNECT
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter Target IP (e.g. Windows IP: 192.168.1.100)"
+                  value={newMonitoredIp}
+                  onChange={e => setNewMonitoredIp(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addMonitoredIp()}
+                  className="flex-1 bg-surface-lowest border border-outline/30 rounded px-3 py-2 mono-data text-sm text-on-surface placeholder-outline focus:outline-none focus:border-primary/50"
+                  id="ip-monitored-input"
+                />
+                <button onClick={addMonitoredIp} className="btn-primary text-xs" id="connect-ip-btn">+ MONITOR TARGET IP</button>
+              </div>
             </div>
           )}
         </div>

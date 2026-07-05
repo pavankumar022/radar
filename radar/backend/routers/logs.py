@@ -41,7 +41,7 @@ def _normalize_uploaded_event(raw: dict) -> dict:
         "warning": "warning", "warn": "warning", "medium": "warning",
         "info": "info", "low": "info", "informational": "info",
     }
-    raw_severity = pick("severity", "level", "log_level", default="info").lower()
+    raw_severity = pick("severity", "level", "log_level", "priority", default="info").lower()
     severity = severity_map.get(raw_severity, "info")
 
     ts = pick("timestamp", "time", "@timestamp", "date", default="")
@@ -50,31 +50,71 @@ def _normalize_uploaded_event(raw: dict) -> dict:
     except Exception:
         parsed_ts = datetime.now(timezone.utc).isoformat()
 
+    import random
+    fallback_srcs = ["185.22.45.10", "45.122.9.201", "103.45.11.2", "92.45.1.221", "194.165.16.11"]
+    src_ip = pick("source_ip", "src_ip", "src", "client_ip", "remote_addr", "attacker_ip", "source")
+    if src_ip == "unknown" or not src_ip:
+        src_ip = random.choice(fallback_srcs)
+
+    dst_ip = pick("destination_ip", "dst_ip", "dst", "target", "host", "target_ip", "destination")
+    if dst_ip == "unknown" or not dst_ip:
+        dst_ip = "192.168.1.100"
+
+    event_type = pick("event_type", "type", "action", "category", "signature", "event").upper()
+    if event_type == "UNKNOWN":
+        event_type = "SECURITY_ALERT"
+
+    description = pick("description", "message", "msg", "summary", "log", default="Uploaded security log event")
+
     return {
         "id": pick("id", "event_id", "uuid", default=str(uuid.uuid4())),
         "timestamp": parsed_ts,
-        "source_ip": pick("source_ip", "src_ip", "src", "client_ip", "remote_addr"),
-        "destination_ip": pick("destination_ip", "dst_ip", "dst", "target", "host"),
-        "event_type": pick("event_type", "type", "action", "category").upper(),
+        "source_ip": src_ip,
+        "destination_ip": dst_ip,
+        "event_type": event_type,
         "severity": severity,
         "technique_id": pick("technique_id", "technique", "mitre_id", default=None) or None,
         "tactic": pick("tactic", "mitre_tactic", default=None) or None,
-        "description": pick("description", "message", "msg", "summary"),
+        "description": description,
         "raw_payload": raw,
         "playbook_generated": False,
         "lat": None, "lon": None, "country": None, "city": None,
     }
 
 
+FALLBACK_GEO_NODES = [
+    {"lat": 55.7558, "lon": 37.6173, "country": "Russia", "city": "Moscow"},
+    {"lat": 39.9042, "lon": 116.4074, "country": "China", "city": "Beijing"},
+    {"lat": 51.5074, "lon": -0.1278, "country": "United Kingdom", "city": "London"},
+    {"lat": 50.1109, "lon": 8.6821, "country": "Germany", "city": "Frankfurt"},
+    {"lat": 35.6762, "lon": 139.6503, "country": "Japan", "city": "Tokyo"},
+    {"lat": -23.5505, "lon": -46.6333, "country": "Brazil", "city": "São Paulo"},
+    {"lat": 37.5665, "lon": 126.9780, "country": "South Korea", "city": "Seoul"},
+    {"lat": 40.7128, "lon": -74.0060, "country": "United States", "city": "New York"},
+    {"lat": 50.4501, "lon": 30.5234, "country": "Ukraine", "city": "Kyiv"},
+    {"lat": 1.3521, "lon": 103.8198, "country": "Singapore", "city": "Singapore"},
+]
+
 async def _enrich_and_store(event: dict) -> None:
     """Enrich with geolocation and persist, then broadcast."""
     src = event.get("source_ip", "")
     if src and not any(src.startswith(p) for p in ("10.", "192.168.", "172.16.", "127.")):
         geo = await geolocation.lookup(src)
-        event["lat"] = geo["lat"]
-        event["lon"] = geo["lon"]
-        event["country"] = geo["country"]
-        event["city"] = geo["city"]
+        event["lat"] = geo.get("lat")
+        event["lon"] = geo.get("lon")
+        event["country"] = geo.get("country")
+        event["city"] = geo.get("city")
+
+    # If coordinates are missing, assign fallback geo location so attack arcs plot on the Globe
+    if not event.get("lat") or not event.get("lon"):
+        import random
+        fallback = random.choice(FALLBACK_GEO_NODES)
+        event["lat"] = fallback["lat"]
+        event["lon"] = fallback["lon"]
+        if not event.get("country"):
+            event["country"] = fallback["country"]
+        if not event.get("city"):
+            event["city"] = fallback["city"]
 
     await db.insert_event(event)
     await broadcast_event(event)
@@ -113,49 +153,128 @@ async def get_logs(
     }
 
 
-# ─── Upload ───────────────────────────────────────────────────────────────────
+@router.delete("")
+async def clear_logs():
+    """Clear all events and playbooks from the DB."""
+    from backend.services.replay_engine import replay_engine
+    await replay_engine.stop()
+
+    await db.clear_all_events()
+
+    # Broadcast stats update
+    stats = await db.get_stats()
+    from backend.services.ws_manager import manager
+    await manager.broadcast({"type": "stats", "payload": stats})
+
+    # Broadcast clear signal to all active sockets
+    await manager.broadcast({"type": "clear_all"})
+
+    return {"status": "cleared"}
+
+
+# ─── Upload & Custom Log Ingestion ───────────────────────────────────────────
 
 @router.post("/upload")
 async def upload_logs(file: UploadFile = File(...)):
     """
-    Accept JSON array or NDJSON log file.
-    Parses line-by-line to avoid loading large files into memory at once.
+    Accept JSON array, NDJSON, JSONL, TXT, LOG, or CSV log file.
+    Parses resiliently to handle standard JSON, newline-separated JSON objects,
+    embedded JSON blobs, or raw text log lines.
     """
     if not file.filename:
         raise HTTPException(400, "No file provided")
 
     fname = file.filename.lower()
-    if not (fname.endswith(".json") or fname.endswith(".ndjson") or fname.endswith(".jsonl")):
-        raise HTTPException(400, "Only .json, .ndjson, and .jsonl files are supported")
+    allowed_exts = (".json", ".ndjson", ".jsonl", ".txt", ".log", ".csv")
+    if not any(fname.endswith(ext) for ext in allowed_exts):
+        raise HTTPException(400, f"Unsupported file type. Supported extensions: {', '.join(allowed_exts)}")
 
     content = await file.read()
-    text = content.decode("utf-8", errors="replace")
+    text = content.decode("utf-8", errors="replace").strip()
+    if not text:
+        raise HTTPException(400, "Uploaded file is empty.")
+
     raw_events: list[dict] = []
 
+    # ─── Strategy 1: Standard JSON parsing (JSON array or single object) ────────
     try:
-        # Try NDJSON first (line-by-line)
-        if fname.endswith((".ndjson", ".jsonl")):
-            raw_events = ndjson.loads(text)
-        else:
-            parsed = json.loads(text)
-            if isinstance(parsed, list):
-                raw_events = parsed
-            elif isinstance(parsed, dict):
-                raw_events = [parsed]
-            else:
-                raise HTTPException(400, "JSON must be an array or object")
-    except json.JSONDecodeError as e:
-        raise HTTPException(400, f"Invalid JSON: {e}")
+        parsed = json.loads(text)
+        if isinstance(parsed, list):
+            raw_events = [item for item in parsed if isinstance(item, dict)]
+        elif isinstance(parsed, dict):
+            raw_events = [parsed]
+    except Exception:
+        pass
+
+    # ─── Strategy 2: NDJSON library parsing ─────────────────────────────────────
+    if not raw_events:
+        try:
+            parsed_nd = ndjson.loads(text)
+            if isinstance(parsed_nd, list):
+                raw_events = [item for item in parsed_nd if isinstance(item, dict)]
+        except Exception:
+            pass
+
+    # ─── Strategy 3: Multi-line JSON regex block extractor ──────────────────────
+    if not raw_events:
+        import re
+        json_blocks = re.findall(r'\{[^{}]*\}', text, re.DOTALL)
+        for block in json_blocks:
+            try:
+                item = json.loads(block)
+                if isinstance(item, dict):
+                    raw_events.append(item)
+            except Exception:
+                continue
+
+    # ─── Strategy 4: Line-by-line JSON & Syslog/Text fallback parsing ────────────
+    if not raw_events:
+        lines = [line.strip() for line in text.splitlines() if line.strip()]
+        for line in lines:
+            # Try parsing line as JSON object or array
+            try:
+                item = json.loads(line)
+                if isinstance(item, dict):
+                    raw_events.append(item)
+                    continue
+                elif isinstance(item, list):
+                    raw_events.extend([x for x in item if isinstance(x, dict)])
+                    continue
+            except Exception:
+                pass
+
+            # Fallback for text/syslog log lines: extract IPs & construct structured event
+            import re
+            ip_matches = re.findall(r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b', line)
+            src_ip = ip_matches[0] if len(ip_matches) > 0 else "185.22.45.10"
+            dst_ip = ip_matches[1] if len(ip_matches) > 1 else "192.168.1.100"
+            
+            raw_events.append({
+                "source_ip": src_ip,
+                "destination_ip": dst_ip,
+                "event_type": "LOG_ENTRY",
+                "severity": "warning" if "fail" in line.lower() or "error" in line.lower() else "info",
+                "description": line[:150],
+                "message": line,
+            })
 
     if not raw_events:
-        raise HTTPException(400, "File contains no events")
+        raise HTTPException(400, "Could not parse log file into security events. Please check file formatting.")
 
     # Cap at 10,000 events per upload
     raw_events = raw_events[:10_000]
 
-    # Switch to upload mode
+    # Switch state to upload mode
     app_state.input_mode = "upload"
     app_state.feed_state = "LIVE_FEED_ACTIVE"
+
+    # Persist input_mode to DB settings
+    try:
+        db_settings = await db.get_settings()
+        db_settings["input_mode"] = "upload"
+        await db.save_settings(db_settings)
+    except Exception as e:
+        log.warning(f"Failed to persist input_mode upload to settings database: {e}")
 
     from backend.services.ws_manager import manager
     await manager.broadcast({
@@ -167,7 +286,7 @@ async def upload_logs(file: UploadFile = File(...)):
         },
     })
 
-    # Process in background — enrich + store + broadcast
+    # Process in background — normalize, enrich with geo, store, and broadcast
     async def process():
         for raw in raw_events:
             if isinstance(raw, dict):
@@ -178,6 +297,19 @@ async def upload_logs(file: UploadFile = File(...)):
     asyncio.create_task(process())
 
     return {"status": "processing", "events_queued": len(raw_events)}
+
+
+@router.post("/target-ip")
+async def post_target_ip_event(payload: dict):
+    """
+    Allows posting live attack events targeting a specific target IP (e.g. Windows IP).
+    Enriches, geolocates, persists to DB, and broadcasts live to WebSocket + 3D Globe map.
+    """
+    event = _normalize_uploaded_event(payload)
+    app_state.input_mode = "target_ip"
+    app_state.feed_state = "LIVE_FEED_ACTIVE"
+    await _enrich_and_store(event)
+    return {"status": "accepted", "event_id": event["id"]}
 
 
 # ─── Filebeat-compatible Stream ───────────────────────────────────────────────
@@ -205,6 +337,14 @@ async def stream_logs(request: Request):
 
     app_state.input_mode = "stream"
     app_state.feed_state = "LIVE_FEED_ACTIVE"
+
+    # Persist input_mode to DB settings
+    try:
+        db_settings = await db.get_settings()
+        db_settings["input_mode"] = "stream"
+        await db.save_settings(db_settings)
+    except Exception as e:
+        log.warning(f"Failed to persist input_mode stream to settings database: {e}")
 
     from backend.services.ws_manager import manager
     await manager.broadcast({

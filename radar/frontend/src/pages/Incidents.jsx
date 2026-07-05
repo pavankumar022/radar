@@ -14,15 +14,24 @@ function formatTime(ts) {
 }
 
 // ─── Incident List (sidebar) ──────────────────────────────────────────────────
-function IncidentList({ onSelect, selectedId, active }) {
+function IncidentList({ onSelect, selectedId, active, onClearAll }) {
   const { state } = useStore()
   const critical = state.alerts.filter(a => a.severity === 'critical').slice(0, 30)
 
   return (
     <div className={`w-full md:w-72 shrink-0 flex flex-col h-full border-r border-primary/10 ${active ? 'hidden md:flex' : 'flex'}`}>
-      <div className="card-header shrink-0">
-        <h2 className="font-semibold text-sm text-on-surface">Incidents</h2>
-        <span className="mono-label text-critical">{critical.length} CRITICAL</span>
+      <div className="card-header shrink-0 flex justify-between items-center w-full">
+        <div>
+          <h2 className="font-semibold text-sm text-on-surface">Incidents</h2>
+          <span className="mono-label text-critical">{critical.length} CRITICAL</span>
+        </div>
+        <button
+          onClick={onClearAll}
+          className="px-2 py-1 bg-critical/15 text-critical border border-critical/30 rounded hover:bg-critical/25 transition-all text-[10px] font-mono tracking-wider font-bold"
+          id="clear-all-incidents-btn"
+        >
+          CLEAR ALL
+        </button>
       </div>
       <div className="flex-1 overflow-y-auto divide-y divide-surface-high">
         {critical.length === 0 ? (
@@ -247,9 +256,21 @@ export default function Incidents() {
     }
   }
 
+  const handleClearAll = async () => {
+    if (!window.confirm("Are you sure you want to clear all incidents and alerts? This will also stop replay and clear the log archive.")) return
+    try {
+      await api.logs.clear()
+      setSelectedAlert(null)
+      setPlaybook(null)
+      navigate('/incidents')
+    } catch (e) {
+      console.error('Failed to clear incidents:', e)
+    }
+  }
+
   return (
     <div className="flex h-full overflow-hidden">
-      <IncidentList onSelect={handleSelect} selectedId={selectedAlert?.id} active={!!selectedAlert} />
+      <IncidentList onSelect={handleSelect} selectedId={selectedAlert?.id} active={!!selectedAlert} onClearAll={handleClearAll} />
       <PlaybookDetail
         alert={selectedAlert}
         playbook={playbook}

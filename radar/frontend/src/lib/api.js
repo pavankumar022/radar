@@ -39,9 +39,21 @@ export const api = {
       const form = new FormData()
       form.append('file', file)
       const res = await fetch(`${BASE}/logs/upload`, { method: 'POST', body: form })
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`)
+      if (!res.ok) {
+        // Try to extract a human-readable detail from the backend response body
+        let detail = ''
+        try {
+          const body = await res.json()
+          // FastAPI wraps validation errors in { detail: "..." }
+          detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
+        } catch {
+          try { detail = await res.text() } catch { /* ignore */ }
+        }
+        throw new Error(`Upload failed: ${res.status}${detail ? ': ' + detail : ''}`)
+      }
       return res.json()
     },
+    clear: () => request('/logs', { method: 'DELETE' }),
   },
 
   // ─── Playbooks ───────────────────────────────────────────────────────────────
