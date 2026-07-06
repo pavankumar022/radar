@@ -137,11 +137,11 @@ async def start_event_generator():
                     await asyncio.sleep(1.0)
                 app_state.feed_state = "SYNTHETIC_FEED" if app_state.input_mode == "synthetic" else "LIVE_FEED_ACTIVE"
 
-            if app_state.input_mode not in ("synthetic", "target_ip"):
+            if app_state.input_mode != "synthetic":
                 await asyncio.sleep(1.0)
                 continue
 
-            app_state.feed_state = "SYNTHETIC_FEED" if app_state.input_mode == "synthetic" else "LIVE_FEED_ACTIVE"
+            app_state.feed_state = "SYNTHETIC_FEED"
 
             await broadcast_event(event)
 

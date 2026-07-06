@@ -20,7 +20,7 @@ router = APIRouter()
 # Shared alert counter (in-process; resets on restart)
 _alert_counter: int = 0
 _last_stats_broadcast = 0.0
-_STATS_INTERVAL = 5.0   # broadcast stats every 5 seconds
+_STATS_INTERVAL = 0.5   # broadcast stats every 0.5 seconds for instant dashboard updates
 
 
 @router.websocket("/ws/alerts")

@@ -241,8 +241,9 @@ async def generate_events(
             await asyncio.sleep(1.0)
             continue
 
-        # Generate background events in synthetic and target_ip modes
-        if app_state.input_mode not in ("synthetic", "target_ip"):
+        # Synthetic background events MUST ONLY be generated in 'synthetic' mode.
+        # Target IP, Upload, and Stream modes listen exclusively for real incoming telemetry.
+        if app_state.input_mode != "synthetic":
             await asyncio.sleep(1.0)
             continue
 
