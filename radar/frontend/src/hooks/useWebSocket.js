@@ -3,16 +3,26 @@
  * 
  * Features:
  * - Auto-reconnect with exponential backoff (max 30s)
+ * - Dynamic URL resolution (checks localStorage for custom Render backend URL)
  * - Heartbeat ping/pong keepalive
- * - Message queue during reconnect to avoid missed events
- * - Exposes real connection state (not hardcoded labels)
  * - Zero dependencies beyond React
  */
 import { useEffect, useRef, useCallback, useState } from 'react'
 
-// Use VITE_WS_URL if provided (e.g. on Vercel), fallback to window.location host relative path
-const WS_URL = import.meta.env.VITE_WS_URL || 
-  ((window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/alerts')
+export function getWsUrl() {
+  const custom = typeof localStorage !== 'undefined' ? localStorage.getItem('radar_api_url') : null
+  if (custom && custom.trim()) {
+    let clean = custom.trim().replace(/\/+$/, '')
+    clean = clean.replace(/\/api$/, '')
+    if (clean.startsWith('http://')) clean = clean.replace('http://', 'ws://')
+    else if (clean.startsWith('https://')) clean = clean.replace('https://', 'wss://')
+    return clean + '/ws/alerts'
+  }
+  if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
+  const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://'
+  return protocol + window.location.host + '/ws/alerts'
+}
+
 const PING_INTERVAL_MS = 25000
 const RECONNECT_BASE_MS = 1000
 const RECONNECT_MAX_MS = 30000
@@ -36,14 +46,14 @@ export function useWebSocket(onMessage) {
     if (wsRef.current?.readyState === WebSocket.OPEN) return
 
     try {
-      const ws = new WebSocket(WS_URL)
+      const url = getWsUrl()
+      const ws = new WebSocket(url)
       wsRef.current = ws
 
       ws.onopen = () => {
         reconnectAttemptsRef.current = 0
         setConnected(true)
 
-        // Heartbeat ping
         pingTimerRef.current = setInterval(() => {
           if (ws.readyState === WebSocket.OPEN) {
             ws.send('ping')
@@ -58,27 +68,28 @@ export function useWebSocket(onMessage) {
             onMessageRef.current?.(msg)
           }
         } catch {
-          // ignore malformed messages
+          // ignore malformed frame
         }
-      }
-
-      ws.onclose = () => {
-        clearTimers()
-        setConnected(false)
-        // Exponential backoff reconnect
-        const delay = Math.min(
-          RECONNECT_BASE_MS * 2 ** reconnectAttemptsRef.current,
-          RECONNECT_MAX_MS
-        )
-        reconnectAttemptsRef.current++
-        reconnectTimerRef.current = setTimeout(connect, delay)
       }
 
       ws.onerror = () => {
         ws.close()
       }
-    } catch (err) {
-      console.warn('WebSocket connect error:', err)
+
+      ws.onclose = () => {
+        setConnected(false)
+        clearTimers()
+
+        const delay = Math.min(
+          RECONNECT_BASE_MS * Math.pow(2, reconnectAttemptsRef.current),
+          RECONNECT_MAX_MS
+        )
+        reconnectAttemptsRef.current += 1
+        reconnectTimerRef.current = setTimeout(connect, delay)
+      }
+    } catch {
+      setConnected(false)
+      reconnectTimerRef.current = setTimeout(connect, RECONNECT_BASE_MS)
     }
   }, [clearTimers])
 
@@ -86,7 +97,9 @@ export function useWebSocket(onMessage) {
     connect()
     return () => {
       clearTimers()
-      wsRef.current?.close()
+      if (wsRef.current) {
+        wsRef.current.close()
+      }
     }
   }, [connect, clearTimers])
 

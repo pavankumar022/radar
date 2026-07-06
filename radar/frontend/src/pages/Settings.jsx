@@ -52,6 +52,22 @@ export default function Settings() {
   const [newIp, setNewIp] = useState('')
   const [newMonitoredIp, setNewMonitoredIp] = useState('')
   const [uploading, setUploading] = useState(false)
+  const [serverUrlInput, setServerUrlInput] = useState(() => localStorage.getItem('radar_api_url') || '')
+
+  const handleSaveServerUrl = () => {
+    if (serverUrlInput.trim()) {
+      localStorage.setItem('radar_api_url', serverUrlInput.trim())
+    } else {
+      localStorage.removeItem('radar_api_url')
+    }
+    window.location.reload()
+  }
+
+  const handleResetServerUrl = () => {
+    localStorage.removeItem('radar_api_url')
+    setServerUrlInput('')
+    window.location.reload()
+  }
 
   // Per-mode isolated error state — errors from one mode never bleed into another
   const [modeErrors, setModeErrors] = useState({ synthetic: null, upload: null, target_ip: null })
@@ -202,9 +218,50 @@ export default function Settings() {
           <p className="text-on-surface-variant text-sm mt-1">Configure core detection parameters and platform integration.</p>
           {offline && (
             <div className="mt-2 px-3 py-2 rounded border border-warning/30 bg-warning/10 text-warning text-xs mono-data fade-in">
-              ⚠ Backend offline — showing local defaults. Changes will save when backend reconnects.
+              ⚠ Backend offline — showing local defaults. If hosted on Render, paste your Render backend URL below to connect.
             </div>
           )}
+        </div>
+
+        {/* Backend Connection Settings */}
+        <div className="card p-5 space-y-4 border-primary/20 bg-surface-low">
+          <div>
+            <h2 className="font-semibold text-on-surface flex items-center gap-2">
+              <span>🔌 Backend Server Connection</span>
+              {offline ? (
+                <span className="text-xs px-2 py-0.5 rounded bg-critical/20 text-critical border border-critical/30">Offline / Local</span>
+              ) : (
+                <span className="text-xs px-2 py-0.5 rounded bg-success/20 text-success border border-success/30">✓ Connected</span>
+              )}
+            </h2>
+            <p className="text-on-surface-variant text-sm mt-1">
+              Connect your Vercel frontend to your live Render backend URL (e.g. <code className="text-xs bg-surface-high px-1 py-0.5 rounded">https://radar-backend.onrender.com</code>).
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="text"
+              placeholder="https://your-backend.onrender.com"
+              value={serverUrlInput}
+              onChange={e => setServerUrlInput(e.target.value)}
+              className="flex-1 bg-surface-high border border-outline/30 rounded px-3 py-2 text-sm text-on-surface focus:outline-none focus:border-primary"
+            />
+            <button
+              onClick={handleSaveServerUrl}
+              className="px-4 py-2 bg-primary text-on-primary font-semibold rounded text-sm hover:bg-primary-hover transition-colors"
+            >
+              Connect Backend
+            </button>
+            {localStorage.getItem('radar_api_url') && (
+              <button
+                onClick={handleResetServerUrl}
+                className="px-3 py-2 border border-outline/30 text-on-surface-variant rounded text-sm hover:bg-surface-high transition-colors"
+              >
+                Reset
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Input Mode */}

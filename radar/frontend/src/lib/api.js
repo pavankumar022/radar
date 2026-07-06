@@ -1,13 +1,30 @@
 /**
  * RADAR API Client
  * All REST API calls go through here — never scattered across components.
- * Base URL is relative so Vite proxy handles routing to backend.
+ * Base URL dynamically checks localStorage for user-configured Render/Remote server URL,
+ * falling back to VITE_API_URL or relative '/api'.
  */
 
-const BASE = import.meta.env.VITE_API_URL || '/api'
+export function getApiBase() {
+  const custom = typeof localStorage !== 'undefined' ? localStorage.getItem('radar_api_url') : null
+  if (custom && custom.trim()) {
+    let clean = custom.trim().replace(/\/+$/, '')
+    if (!clean.endsWith('/api')) clean += '/api'
+    return clean
+  }
+  const envUrl = import.meta.env.VITE_API_URL
+  if (envUrl && envUrl.trim()) {
+    let clean = envUrl.trim().replace(/\/+$/, '')
+    if (!clean.endsWith('/api')) clean += '/api'
+    return clean
+  }
+  return '/api'
+}
 
 async function request(path, options = {}) {
-  const res = await fetch(`${BASE}${path}`, {
+  const base = getApiBase()
+  const targetUrl = `${base}${path.startsWith('/') ? path : '/' + path}`
+  const res = await fetch(targetUrl, {
     headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
   })
@@ -36,15 +53,14 @@ export const api = {
       return request(`/logs?${q}`)
     },
     upload: async (file) => {
+      const base = getApiBase()
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch(`${BASE}/logs/upload`, { method: 'POST', body: form })
+      const res = await fetch(`${base}/logs/upload`, { method: 'POST', body: form })
       if (!res.ok) {
-        // Try to extract a human-readable detail from the backend response body
         let detail = ''
         try {
           const body = await res.json()
-          // FastAPI wraps validation errors in { detail: "..." }
           detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
         } catch {
           try { detail = await res.text() } catch { /* ignore */ }
