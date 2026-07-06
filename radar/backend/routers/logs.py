@@ -341,6 +341,7 @@ async def post_target_ip_event(payload: dict):
     Enriches, geolocates, persists to DB, and broadcasts live to WebSocket + 3D Globe map.
     """
     event = _normalize_uploaded_event(payload)
+    app_state.monitoring_active = True
     app_state.input_mode = "target_ip"
     app_state.feed_state = "LIVE_FEED_ACTIVE"
     await _enrich_and_store(event)
