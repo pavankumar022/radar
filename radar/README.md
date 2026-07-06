@@ -35,6 +35,16 @@ RADAR is an autonomous security Operations Center (SOC) platform designed to det
 
 ## Quick Start
 
+### Method 1: Single Docker Command (Simplest — No Cloning Required)
+Run this single command in your terminal to pull the pre-built image and start the entire app immediately:
+```bash
+docker run -d -p 8080:8080 -v radar_data:/app/data -e DATABASE_PATH=/app/data/radar.db pavankumar022/radar:latest
+```
+Open your browser at: **[http://localhost:8080](http://localhost:8080)**
+
+---
+
+### Method 2: Clone and Run via Docker Compose
 1. **Clone the repository**:
    ```bash
    git clone https://github.com/pavankumar022/RADAR-Real-time_Autonomous_Defense_And_Response.git
@@ -52,12 +62,14 @@ RADAR is an autonomous security Operations Center (SOC) platform designed to det
    - **Backend Ingestion API**: [http://localhost:8080](http://localhost:8080)
    - **FastAPI Documentation**: [http://localhost:8080/api/docs](http://localhost:8080/api/docs)
 
-4. **Simulate an attack**:
-   To test the live visualization, you can run the bundled simulation scripts from your host machine (requires Python 3 installed):
-   ```bash
-   # Target your local docker instance with a simulated Nmap port scan
-   python radar/attack_tools/run_nmap_scan.py --target 192.168.137.140 --radar-url http://localhost:8080
-   
-   # Target your local docker instance with a simulated SSH brute-force attack
-   python radar/attack_tools/run_ssh_brute.py --target 192.168.137.140 --radar-url http://localhost:8080
-   ```
+---
+
+### 4. Simulate an attack:
+To test the live visualization, you can run the bundled simulation scripts from your host machine (requires Python 3 installed):
+```bash
+# Target your local docker instance with a simulated Nmap port scan
+python radar/attack_tools/run_nmap_scan.py --target 192.168.137.140 --radar-url http://localhost:8080
+
+# Target your local docker instance with a simulated SSH brute-force attack
+python radar/attack_tools/run_ssh_brute.py --target 192.168.137.140 --radar-url http://localhost:8080
+```

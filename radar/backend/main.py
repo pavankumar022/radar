@@ -170,3 +170,30 @@ async def health():
         "uptime_seconds": time.monotonic() - app_state.start_time,
         "feed_state": app_state.feed_state,
     }
+
+
+# ─── SPA Static Files Ingestion & Routing Fallback ────────────────────────────
+import os
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+
+dist_path = os.path.join(os.path.dirname(__file__), "dist")
+if os.path.exists(dist_path):
+    assets_dir = os.path.join(dist_path, "assets")
+    if os.path.exists(assets_dir):
+        app.mount("/assets", StaticFiles(directory=assets_dir), name="static")
+
+    @app.get("/{catchall:path}")
+    async def serve_spa(catchall: str):
+        if catchall.startswith("api") or catchall.startswith("ws") or catchall.startswith("docs"):
+            from fastapi import HTTPException
+            raise HTTPException(status_code=404, detail="Not Found")
+            
+        file_path = os.path.join(dist_path, catchall)
+        if os.path.exists(file_path) and os.path.isfile(file_path):
+            return FileResponse(file_path)
+            
+        index_file = os.path.join(dist_path, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+
