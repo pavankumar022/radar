@@ -141,6 +141,14 @@ async def _enrich_and_store(event: dict) -> None:
 
 # ─── Archive ───────────────────────────────────────────────────────────────────
 
+@router.delete("/clear")
+@router.delete("")
+async def clear_logs():
+    """Clear all events and playbooks from the database."""
+    deleted_count = await db.clear_events()
+    return {"status": "cleared", "count": deleted_count}
+
+
 @router.get("")
 async def get_logs(
     page: int = Query(1, ge=1),

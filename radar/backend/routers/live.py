@@ -127,6 +127,9 @@ async def ingest_live_alert(request: Request):
     else:
         items = []
 
+    if not app_state.monitoring_active:
+        return {"status": "ignored", "reason": "Monitoring inactive (Shield OFF)"}
+
     if not items:
         return {"status": "ignored", "reason": "empty payload"}
 

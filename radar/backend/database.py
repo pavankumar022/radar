@@ -139,6 +139,18 @@ async def insert_event(event: dict) -> None:
         await db.commit()
 
 
+async def clear_events() -> int:
+    """Clear all events and playbooks from the database."""
+    async with aiosqlite.connect(DB_PATH) as db:
+        cursor = await db.execute("DELETE FROM events")
+        deleted_count = cursor.rowcount
+        await db.execute("DELETE FROM playbooks")
+        await db.commit()
+        await db.execute("VACUUM")
+        log.info(f"Cleared {deleted_count} events from database")
+        return deleted_count
+
+
 async def get_events_paginated(
     page: int = 1,
     page_size: int = 50,

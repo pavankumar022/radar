@@ -115,17 +115,19 @@ async def on_shutdown():
 async def start_event_generator():
     """
     Main synthetic event generation loop.
-    Emits events at ~10/sec organically.
-    Respects monitoring_active toggle.
+    Emits events organically when Shield is ON (monitoring_active=True).
+    Respects monitoring_active toggle: Shield OFF = standby (no log collection), Shield ON = collecting logs.
     """
     from backend.services.event_generator import generate_events
     from backend.routers.alerts import broadcast_event
 
     log.info("Synthetic event generator starting...")
-    if app_state.input_mode == "synthetic":
+    if not app_state.monitoring_active:
+        app_state.feed_state = "SYSTEM_STANDBY"
+    elif app_state.input_mode == "synthetic":
         app_state.feed_state = "SYNTHETIC_FEED"
     else:
-        app_state.feed_state = "LIVE_FEED_ACTIVE" if app_state.monitoring_active else "SYSTEM_STANDBY"
+        app_state.feed_state = "LIVE_FEED_ACTIVE"
 
     try:
         async for event in generate_events():
@@ -153,17 +155,8 @@ async def start_event_generator():
 # ─── Seed ─────────────────────────────────────────────────────────────────────
 
 async def _seed_if_empty():
-    """Seed the database with 5,000 synthetic events on first run."""
-    events, total = await db.get_events_paginated(page=1, page_size=1)
-    if total == 0:
-        log.info("Database empty — seeding with 5,000 synthetic events...")
-        from backend.services.event_generator import generate_seed_events
-        seed = await generate_seed_events(5000)
-        for ev in seed:
-            await db.insert_event(ev)
-        log.info(f"Seeded {len(seed)} events")
-    else:
-        log.info(f"Database has {total} existing events — skipping seed")
+    """Default log seeding is disabled. Starts with clean empty log database."""
+    log.info("Database initialized — automatic 5,000 log seeding disabled")
 
 
 # ─── Health Check ─────────────────────────────────────────────────────────────
