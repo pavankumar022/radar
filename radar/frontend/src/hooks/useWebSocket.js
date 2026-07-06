@@ -2,14 +2,12 @@
  * useWebSocket — Native WebSocket hook for RADAR
  *
  * Features:
- * - Auto-reconnect with exponential backoff (max 30s)
- * - Dynamic URL resolution (checks localStorage / VITE_WS_URL / Vercel-Render production fallback)
- * - Heartbeat ping/pong keepalive
- * - Keep-alive HTTP ping to Render backend every 10 min (prevents free tier sleep)
- * - Zero dependencies beyond React
+ * - Auto-reconnect with exponential backoff (max 15s)
+ * - Dynamic URL resolution (localStorage / VITE_WS_URL / Vercel→Render auto fallback)
+ * - Heartbeat ping/pong keepalive every 20s
+ * - Render uptime is maintained externally by UptimeRobot (free), not in-app
  */
 import { useEffect, useRef, useCallback, useState } from 'react'
-import { getApiBase } from '../lib/api'
 
 export function getWsUrl() {
   const custom = typeof localStorage !== 'undefined' ? localStorage.getItem('radar_api_url') : null
@@ -21,7 +19,7 @@ export function getWsUrl() {
     return clean + '/ws/alerts'
   }
   if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
-  // Production automatic fallback connecting Vercel deployment to Render Python WebSockets
+  // Production: Vercel frontend → Render backend WebSocket
   if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
     return 'wss://radar-backend-lmzh.onrender.com/ws/alerts'
   }
@@ -29,16 +27,14 @@ export function getWsUrl() {
   return protocol + window.location.host + '/ws/alerts'
 }
 
-const PING_INTERVAL_MS = 20000      // WebSocket ping every 20s
+const PING_INTERVAL_MS = 20000   // WebSocket ping every 20s
 const RECONNECT_BASE_MS = 1500
-const RECONNECT_MAX_MS = 15000      // Faster max reconnect (15s instead of 30s)
-const KEEPALIVE_INTERVAL_MS = 540000 // HTTP keep-alive ping every 9 minutes (prevent Render sleep)
+const RECONNECT_MAX_MS = 15000   // Max 15s between reconnect attempts
 
 export function useWebSocket(onMessage) {
   const wsRef = useRef(null)
   const pingTimerRef = useRef(null)
   const reconnectTimerRef = useRef(null)
-  const keepAliveTimerRef = useRef(null)
   const reconnectAttemptsRef = useRef(0)
   const onMessageRef = useRef(onMessage)
   onMessageRef.current = onMessage
@@ -48,20 +44,6 @@ export function useWebSocket(onMessage) {
   const clearTimers = useCallback(() => {
     if (pingTimerRef.current) clearInterval(pingTimerRef.current)
     if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current)
-  }, [])
-
-  // Keep-alive: ping Render /health endpoint every 9 min so it never sleeps
-  useEffect(() => {
-    const pingBackend = () => {
-      try {
-        const base = getApiBase().replace('/api', '')
-        fetch(`${base}/health`, { method: 'GET', mode: 'no-cors' }).catch(() => {})
-      } catch { /* silent */ }
-    }
-    // Ping once immediately on mount
-    pingBackend()
-    keepAliveTimerRef.current = setInterval(pingBackend, KEEPALIVE_INTERVAL_MS)
-    return () => clearInterval(keepAliveTimerRef.current)
   }, [])
 
   const connect = useCallback(() => {
@@ -75,11 +57,8 @@ export function useWebSocket(onMessage) {
       ws.onopen = () => {
         reconnectAttemptsRef.current = 0
         setConnected(true)
-
         pingTimerRef.current = setInterval(() => {
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send('ping')
-          }
+          if (ws.readyState === WebSocket.OPEN) ws.send('ping')
         }, PING_INTERVAL_MS)
       }
 
@@ -94,14 +73,11 @@ export function useWebSocket(onMessage) {
         }
       }
 
-      ws.onerror = () => {
-        ws.close()
-      }
+      ws.onerror = () => { ws.close() }
 
       ws.onclose = () => {
         setConnected(false)
         clearTimers()
-
         const delay = Math.min(
           RECONNECT_BASE_MS * Math.pow(2, reconnectAttemptsRef.current),
           RECONNECT_MAX_MS
@@ -119,9 +95,7 @@ export function useWebSocket(onMessage) {
     connect()
     return () => {
       clearTimers()
-      if (wsRef.current) {
-        wsRef.current.close()
-      }
+      if (wsRef.current) wsRef.current.close()
     }
   }, [connect, clearTimers])
 
