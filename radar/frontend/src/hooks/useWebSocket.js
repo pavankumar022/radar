@@ -26,7 +26,12 @@ export function getWsUrl() {
   // 2. Build-time env override
   if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
 
-  // 3. Same host — works for Docker (Nginx proxies /ws/) and local dev (vite proxy)
+  // 3. Vercel deployment fallback to Render backend
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return 'wss://radar-backend-lmzh.onrender.com/ws/alerts'
+  }
+
+  // 4. Same host — works for Docker (Nginx proxies /ws/) and local dev (vite proxy)
   const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://'
   return protocol + window.location.host + '/ws/alerts'
 }

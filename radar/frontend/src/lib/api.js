@@ -17,6 +17,10 @@ export function getApiBase() {
     if (!clean.endsWith('/api')) clean += '/api'
     return clean
   }
+  // Production automatic fallback connecting Vercel deployment to Render Python backend
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return 'https://radar-backend-lmzh.onrender.com/api'
+  }
   return '/api'
 }
 

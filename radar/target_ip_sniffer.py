@@ -83,12 +83,41 @@ def main():
     scan_history = {}      # src_ip -> list of probe timestamps
     last_alert_time = {}   # (src_ip, event_type) -> timestamp
 
+    import queue
+    import threading
+
+    alert_queue = queue.Queue()
+
+    def alert_sender_worker():
+        while True:
+            try:
+                url, payload = alert_queue.get()
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode("utf-8"),
+                    headers={"Content-Type": "application/json"},
+                    method="POST",
+                )
+                with urllib.request.urlopen(req, timeout=4) as resp:
+                    print(f"  ✓ ALERT → [{payload['event_type']}] {payload['src_ip']}→{payload['dst_ip']}:{payload['dst_port']} ({url.split('/')[2]})")
+            except Exception as e:
+                try:
+                    host = url.split('/')[2]
+                except Exception:
+                    host = "unknown"
+                print(f"  ✗ FAIL  → {payload['event_type']} @ {host} ({e})")
+            finally:
+                alert_queue.task_done()
+
+    # Start the asynchronous HTTP poster thread
+    threading.Thread(target=alert_sender_worker, daemon=True).start()
+
     def send_alert(src_ip, dst_port, event_type, technique, description, severity="critical"):
-        """POST a single normalized alert to all configured RADAR backends."""
+        """Queue a normalized alert for posting asynchronously to all backends."""
         key = (src_ip, event_type)
         now = time.time()
-        # Rate limit: max 1 alert per src+event_type per 1.5 seconds
-        if now - last_alert_time.get(key, 0) < 1.5:
+        # Rate limit: max 1 alert per src+event_type per 0.5 seconds for fast live updates
+        if now - last_alert_time.get(key, 0) < 0.5:
             return
         last_alert_time[key] = now
 
@@ -105,17 +134,7 @@ def main():
             "source": "live_capture",
         }
         for url in ingest_urls:
-            try:
-                req = urllib.request.Request(
-                    url,
-                    data=json.dumps(payload).encode("utf-8"),
-                    headers={"Content-Type": "application/json"},
-                    method="POST",
-                )
-                with urllib.request.urlopen(req, timeout=4) as resp:
-                    print(f"  ✓ ALERT → [{event_type}] {src_ip}→{target_ip}:{dst_port} ({url.split('/')[2]})")
-            except Exception as e:
-                print(f"  ✗ FAIL  → {event_type} @ {url.split('/')[2]} ({e})")
+            alert_queue.put((url, payload))
 
     def classify_port(port):
         """Return (event_type, technique_id, severity) based on destination port."""

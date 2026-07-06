@@ -112,19 +112,24 @@ def main():
             "source": "nmap_scanner",
         }
 
-        for ingest_url in ingest_urls:
+        import threading
+
+        def post_alert(url, data):
             try:
                 req = urllib.request.Request(
-                    ingest_url,
-                    data=json.dumps(payload).encode("utf-8"),
+                    url,
+                    data=json.dumps(data).encode("utf-8"),
                     headers={"Content-Type": "application/json"},
                 )
                 with urllib.request.urlopen(req, timeout=5) as resp:
                     pass
-            except Exception as e:
-                print(f"   ⚠ POST to {ingest_url} failed: {e}")
+            except Exception:
+                pass
 
-        time.sleep(0.05)
+        for ingest_url in ingest_urls:
+            threading.Thread(target=post_alert, args=(ingest_url, payload), daemon=True).start()
+
+        time.sleep(0.01)
 
     print(f"\n[✓] Nmap scan complete!")
     print(f"[✓] Check your RADAR dashboard for live alerts and 3D Globe arcs:")
