@@ -6,6 +6,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { api } from '../lib/api'
 import { useStore } from '../lib/store'
+import LiveAnalysisTerminal from '../components/dashboard/LiveAnalysisTerminal'
 
 const DEFAULT_SETTINGS = {
   detection_thresholds: { general_sensitivity: 74, anomaly_detection: 88, lateral_movement: 42 },
@@ -39,6 +40,7 @@ function ThresholdSlider({ label, value, onChange }) {
 const INPUT_MODES = [
   { id: 'synthetic', label: 'Synthetic', icon: '⚙', desc: 'AI-generated events' },
   { id: 'upload', label: 'File Upload', icon: '📁', desc: 'JSON/NDJSON/Log files' },
+  { id: 'target_ip', label: 'Add IP', icon: '🎯', desc: 'Target IP Monitor' },
 ]
 
 export default function Settings() {
@@ -301,7 +303,57 @@ export default function Settings() {
             </div>
           )}
 
+          {/* IP Target Monitor Mode — target IP input and live surveillance list */}
+          {activeMode === 'target_ip' && (
+            <div className="space-y-4 pt-4 border-t border-primary/10 fade-in">
+              <div>
+                <h3 className="font-semibold text-sm text-on-surface">Target IP Surveillance</h3>
+                <p className="text-on-surface-variant text-xs mt-0.5">
+                  Enter target machine IP addresses (e.g. Windows workstation/server IP) to monitor real-time attack vectors (Brute Force, Nmap scans, Exploits).
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                {(settings.monitored_ips || []).map(ip => (
+                  <div
+                    key={ip}
+                    className="flex items-center justify-between px-3 py-2.5 rounded border border-outline/20 bg-surface-low text-xs text-on-surface animate-fade-in"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-secondary pulse-dot" />
+                      <span className="mono-data font-bold">{ip}</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="mono-label text-secondary text-[10px]">LIVE SURVEILLANCE ACTIVE</span>
+                      <button
+                        onClick={() => removeMonitoredIp(ip)}
+                        className="px-2 py-1 rounded bg-critical/15 text-critical border border-critical/30 hover:bg-critical/25 text-[10px] font-mono transition-all"
+                      >
+                        DISCONNECT
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Enter Target IP (e.g. Windows IP: 192.168.1.100)"
+                  value={newMonitoredIp}
+                  onChange={e => setNewMonitoredIp(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addMonitoredIp()}
+                  className="flex-1 bg-surface-lowest border border-outline/30 rounded px-3 py-2 mono-data text-sm text-on-surface placeholder-outline focus:outline-none focus:border-primary/50"
+                  id="ip-monitored-input"
+                />
+                <button onClick={addMonitoredIp} className="btn-primary text-xs" id="connect-ip-btn">+ MONITOR TARGET IP</button>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Live Network Capture Terminal */}
+        <LiveAnalysisTerminal />
 
         {/* IP Whitelist */}
         <div className="card p-5 space-y-4">
