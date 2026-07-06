@@ -410,3 +410,14 @@ async def stream_logs(request: Request):
         asyncio.create_task(_enrich_and_store(event))
 
     return {"status": "accepted", "count": len(events_raw)}
+
+
+@router.post("/target-ip")
+async def ingest_target_ip_via_logs(request: Request):
+    """
+    Alias endpoint for target_ip_sniffer.py backward compatibility.
+    Forwards directly to the live ingest handler.
+    """
+    from backend.routers.live import ingest_live_alert
+    return await ingest_live_alert(request)
+

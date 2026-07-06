@@ -226,3 +226,11 @@ async def ingest_live_alert(request: Request):
         last_event_id = event["id"]
 
     return {"status": "accepted", "events_processed": len(items), "last_event_id": last_event_id}
+
+
+# Alias: old sniffer scripts posted here — redirect to ingest
+@router.post("/target-ip")
+async def ingest_target_ip_alert(request: Request):
+    """Alias endpoint — same as /ingest. Accepts events from target_ip_sniffer.py."""
+    return await ingest_live_alert(request)
+
