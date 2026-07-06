@@ -1,4 +1,21 @@
+<div align="center">
+
+![RADAR Banner](../assets/radar-banner.png)
+
 # RADAR — Real-time Autonomous Defense And Response
+### *Enterprise-Grade Real-Time Cyber Threat Intelligence, Live Packet Capture & Autonomous Incident Response Platform*
+
+[![Python](https://img.shields.io/badge/Python-3.12+-3776AB?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![React](https://img.shields.io/badge/React-18.0+-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
+[![Three.js](https://img.shields.io/badge/Three.js-3D_Globe-000000?style=for-the-badge&logo=three.js&logoColor=white)](https://threejs.org)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-3.0+-38BDF8?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
+[![MITRE ATT&CK](https://img.shields.io/badge/MITRE-ATT%26CK_v14-RED?style=for-the-badge&logo=mitre&logoColor=white)](https://attack.mitre.org)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
+
+</div>
+
+---
 
 RADAR is an autonomous security Operations Center (SOC) platform designed to detect, visualize, and remediate network cyber threats in real time. It establishes a complete red/blue security loop, linking raw network telemetry directly with interactive 3D visualizations and automated incident response tools.
 
