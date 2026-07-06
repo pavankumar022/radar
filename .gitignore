@@ -44,3 +44,6 @@ Thumbs.db
 
 # System generated artifacts
 .system_generated/
+
+# User raw log file
+1.txt
