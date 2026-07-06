@@ -1,8 +1,7 @@
 /**
  * RADAR API Client
  * All REST API calls go through here — never scattered across components.
- * Base URL dynamically checks localStorage for user-configured Render/Remote server URL,
- * falling back to VITE_API_URL or relative '/api'.
+ * Base URL dynamically checks localStorage / VITE_API_URL / Vercel-Render production fallback.
  */
 
 export function getApiBase() {
@@ -17,6 +16,10 @@ export function getApiBase() {
     let clean = envUrl.trim().replace(/\/+$/, '')
     if (!clean.endsWith('/api')) clean += '/api'
     return clean
+  }
+  // Production automatic fallback connecting Vercel deployment to Render Python backend
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return 'https://radar-backend-lmzh.onrender.com/api'
   }
   return '/api'
 }

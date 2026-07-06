@@ -16,7 +16,7 @@ from datetime import datetime, timezone
 
 def main():
     parser = argparse.ArgumentParser(description="RADAR Real-time Port Scan & Nmap Sniffer")
-    parser.add_argument("--radar-url", default="http://localhost:8080", help="RADAR backend base URL")
+    parser.add_argument("--radar-url", default="https://radar-backend-lmzh.onrender.com", help="RADAR backend base URL")
     parser.add_argument("--ip", default="", help="Target IP to monitor (default: auto-detect)")
     args = parser.parse_args()
 

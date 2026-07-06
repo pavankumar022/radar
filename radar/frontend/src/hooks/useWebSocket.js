@@ -3,7 +3,7 @@
  * 
  * Features:
  * - Auto-reconnect with exponential backoff (max 30s)
- * - Dynamic URL resolution (checks localStorage for custom Render backend URL)
+ * - Dynamic URL resolution (checks localStorage / VITE_WS_URL / Vercel-Render production fallback)
  * - Heartbeat ping/pong keepalive
  * - Zero dependencies beyond React
  */
@@ -19,6 +19,10 @@ export function getWsUrl() {
     return clean + '/ws/alerts'
   }
   if (import.meta.env.VITE_WS_URL) return import.meta.env.VITE_WS_URL
+  // Production automatic fallback connecting Vercel deployment to Render Python WebSockets
+  if (typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')) {
+    return 'wss://radar-backend-lmzh.onrender.com/ws/alerts'
+  }
   const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://'
   return protocol + window.location.host + '/ws/alerts'
 }

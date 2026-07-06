@@ -14,7 +14,7 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="RADAR Nmap Port Scan Attack Tester")
     parser.add_argument("--target", required=True, help="Target machine IP (e.g. 192.168.1.5)")
-    parser.add_argument("--radar-url", default="http://localhost:8080", help="RADAR backend base URL")
+    parser.add_argument("--radar-url", default="https://radar-backend-lmzh.onrender.com", help="RADAR backend base URL")
     args = parser.parse_args()
 
     target_ip = args.target
