@@ -1,0 +1,46 @@
+# Python / Virtual Environments
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environment secrets — NEVER commit secrets
+.env
+*.env
+*.env.local
+
+# Databases & Cache
+*.db
+*.sqlite
+*.sqlite3
+radar.db
+radar/radar.db
+
+# Logs & Temporary outputs
+*.log
+logs/
+*.tmp
+image.png
+
+# Node / Frontend build outputs
+node_modules/
+frontend/node_modules/
+radar/frontend/node_modules/
+frontend/dist/
+radar/frontend/dist/
+.next/
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+.gemini/
+
+# System generated artifacts
+.system_generated/

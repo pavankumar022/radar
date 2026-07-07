@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>RADAR | Cyber Operations Center</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;family=JetBrains+Mono:wght@400;500;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-bright": "#343a41",
+                    "on-secondary": "#003918",
+                    "surface-container-low": "#161c23",
+                    "on-error": "#690005",
+                    "on-primary-fixed-variant": "#004880",
+                    "background": "#0e141b",
+                    "on-tertiary-fixed": "#410008",
+                    "on-tertiary": "#680013",
+                    "on-surface-variant": "#c0c7d4",
+                    "inverse-on-surface": "#2b3138",
+                    "tertiary-container": "#ff696f",
+                    "on-secondary-fixed": "#00210b",
+                    "secondary-fixed": "#62ff96",
+                    "primary-container": "#3b9eff",
+                    "on-primary-container": "#00345e",
+                    "on-surface": "#dde3ed",
+                    "secondary-container": "#05e777",
+                    "surface-container-lowest": "#090f15",
+                    "surface": "#0e141b",
+                    "tertiary": "#ffb3b2",
+                    "outline": "#8a919e",
+                    "tertiary-fixed-dim": "#ffb3b2",
+                    "surface-container-highest": "#2f353d",
+                    "outline-variant": "#404752",
+                    "surface-dim": "#0e141b",
+                    "on-secondary-container": "#00622e",
+                    "surface-container-high": "#242a32",
+                    "inverse-surface": "#dde3ed",
+                    "on-tertiary-fixed-variant": "#920020",
+                    "inverse-primary": "#0060a8",
+                    "on-tertiary-container": "#6c0015",
+                    "on-error-container": "#ffdad6",
+                    "on-primary-fixed": "#001c38",
+                    "on-background": "#dde3ed",
+                    "tertiary-fixed": "#ffdad9",
+                    "secondary-fixed-dim": "#00e475",
+                    "error": "#ffb4ab",
+                    "primary-fixed-dim": "#a1c9ff",
+                    "surface-container": "#1a2027",
+                    "error-container": "#93000a",
+                    "primary-fixed": "#d3e4ff",
+                    "secondary": "#7dffa2",
+                    "on-primary": "#00325b",
+                    "primary": "#a1c9ff",
+                    "on-secondary-fixed-variant": "#005226",
+                    "surface-tint": "#a1c9ff",
+                    "surface-variant": "#2f353d"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "grid-margin": "24px",
+                    "md": "16px",
+                    "xs": "4px",
+                    "sm": "8px",
+                    "base": "4px",
+                    "xl": "32px",
+                    "2xl": "48px",
+                    "lg": "24px",
+                    "grid-gutter": "16px"
+            },
+            "fontFamily": {
+                    "body-sm": ["Inter"],
+                    "mono-label": ["JetBrains Mono"],
+                    "headline-md": ["Inter"],
+                    "body-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "mono-data": ["JetBrains Mono"]
+            },
+            "fontSize": {
+                    "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                    "mono-label": ["11px", {"lineHeight": "14px", "letterSpacing": "0.08em", "fontWeight": "700"}],
+                    "headline-md": ["24px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "body-md": ["15px", {"lineHeight": "22px", "fontWeight": "400"}],
+                    "display-lg": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-sm": ["18px", {"lineHeight": "24px", "fontWeight": "600"}],
+                    "mono-data": ["13px", {"lineHeight": "20px", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        body {
+            background-color: #0e141b;
+            color: #dde3ed;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+        .glass-card {
+            background: rgba(22, 28, 35, 0.6);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(59, 158, 255, 0.15);
+        }
+        .glow-blue { box-shadow: 0 0 15px rgba(59, 158, 255, 0.15); }
+        .glow-green { box-shadow: 0 0 15px rgba(5, 231, 119, 0.2); }
+        .glow-red { box-shadow: 0 0 15px rgba(255, 105, 111, 0.2); }
+        
+        .dot-grid {
+            background-image: radial-gradient(rgba(59, 158, 255, 0.1) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .terminal-scroll::-webkit-scrollbar { width: 4px; }
+        .terminal-scroll::-webkit-scrollbar-track { background: transparent; }
+        .terminal-scroll::-webkit-scrollbar-thumb { background: rgba(59, 158, 255, 0.3); border-radius: 10px; }
+
+        @keyframes pulse-soft {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        .pulse-active { animation: pulse-soft 2s infinite ease-in-out; }
+
+        .scan-line {
+            position: absolute;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(to right, transparent, rgba(59, 158, 255, 0.5), transparent);
+            animation: scan 4s infinite linear;
+        }
+        @keyframes scan {
+            0% { top: 0; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body class="font-body-md text-body-md selection:bg-primary-container selection:text-on-primary-container">
+<!-- Global Background Shader -->
+<!-- STITCH_SHADER_START:ANIMATION_3 class="fixed inset-0 w-full h-full opacity-40 pointer-events-none z-0" -->
+<div class="fixed inset-0 w-full h-full opacity-40 pointer-events-none z-0" style="display:block;">
+<canvas id="shader-canvas-ANIMATION_3" style="display:block;width:100%;height:100%"></canvas>
+<script>
+(function() {
+  const canvas = document.getElementById('shader-canvas-ANIMATION_3');
+
+  // Sync the WebGL drawing-buffer size with the CSS-driven layout size.
+  // This fires on initial layout and whenever the element is resized.
+  function syncSize() {
+    const w = canvas.clientWidth  || 1280;
+    const h = canvas.clientHeight || 720;
+    if (canvas.width !== w || canvas.height !== h) {
+      canvas.width  = w;
+      canvas.height = h;
+    }
+  }
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncSize).observe(canvas);
+  }
+  syncSize();
+
+  const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+  if (!gl) return;
+  const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+  const fs = `precision highp float;
+varying vec2 v_texCoord;
+uniform float u_time;
+uniform vec2 u_resolution;
+
+float random(vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
+void main() {
+    vec2 st = v_texCoord;
+    vec3 color = vec3(0.043, 0.059, 0.078); // #0B0F14
+    
+    // Dot grid texture
+    vec2 grid = fract(st * vec2(u_resolution.x / 40.0, u_resolution.y / 40.0));
+    float dots = 1.0 - smoothstep(0.05, 0.1, length(grid - 0.5));
+    color += dots * 0.03;
+    
+    // Subtle ambient glow
+    float pulse = (sin(u_time * 0.5) * 0.5 + 0.5) * 0.02;
+    color += vec3(0.23, 0.62, 1.0) * pulse * (1.0 - length(st - 0.5));
+    
+    gl_FragColor = vec4(color, 1.0);
+}`;
+  function cs(type, src) {
+    const s = gl.createShader(type);
+    gl.shaderSource(s, src);
+    gl.compileShader(s);
+    return s;
+  }
+  const prog = gl.createProgram();
+  gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+  gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+  gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(prog, 'a_position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  const uTime = gl.getUniformLocation(prog, 'u_time');
+  const uRes = gl.getUniformLocation(prog, 'u_resolution');
+  const uMouse = gl.getUniformLocation(prog, 'u_mouse');
+
+  // u_mouse is in pixel coordinates matching u_resolution (ShaderToy convention).
+  // Shaders that need normalized coords should use: u_mouse / u_resolution.
+  let mouse = { x: canvas.width / 2, y: canvas.height / 2 };
+  window.addEventListener('mousemove', (event) => {
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width && rect.height) {
+      const nx = (event.clientX - rect.left) / rect.width;
+      const ny = 1.0 - (event.clientY - rect.top) / rect.height;
+      mouse.x = nx * canvas.width;
+      mouse.y = ny * canvas.height;
+    }
+  });
+
+  function render(t) {
+    if (typeof ResizeObserver === 'undefined') syncSize();
+    gl.viewport(0, 0, canvas.width, canvas.height);
+    if (uTime) gl.uniform1f(uTime, t * 0.001);
+    if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+    if (uMouse) gl.uniform2f(uMouse, mouse.x, mouse.y);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    requestAnimationFrame(render);
+  }
+  render(0);
+})();
+</script>
+</div>
+<!-- STITCH_SHADER_END:ANIMATION_3 -->
+<div class="fixed inset-0 dot-grid pointer-events-none z-0"></div>
+<!-- TopNavBar -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-grid-margin h-16 bg-surface-dim/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_0_15px_rgba(59,158,255,0.15)]">
+<div class="flex items-center gap-md">
+<div class="flex items-center gap-sm">
+<!-- STITCH_SVG_START:ANIMATION_2 class="w-8 h-8 rounded-lg overflow-hidden" --><div class="w-8 h-8 rounded-lg overflow-hidden" id="animated-svg-ANIMATION_2" style="display:block;"><svg fill="none" viewbox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+<circle cx="12" cy="12" opacity="0.3" r="10" stroke="#3B9EFF" stroke-width="1"></circle>
+<circle cx="12" cy="12" opacity="0.3" r="6" stroke="#3B9EFF" stroke-width="1"></circle>
+<circle cx="12" cy="12" opacity="0.3" r="2" stroke="#3B9EFF" stroke-width="1"></circle>
+<g>
+<path d="M12 12L12 2" stroke="#3B9EFF" stroke-linecap="round" stroke-width="2">
+<animatetransform attributename="transform" dur="2s" from="0 12 12" repeatcount="indefinite" to="360 12 12" type="rotate"></animatetransform>
+</path>
+<path d="M12 12L12 2" filter="blur(2px)" opacity="0.3" stroke="#3B9EFF" stroke-linecap="round" stroke-width="4">
+<animatetransform attributename="transform" dur="2s" from="0 12 12" repeatcount="indefinite" to="360 12 12" type="rotate"></animatetransform>
+</path>
+</g>
+</svg></div><!-- STITCH_SVG_END:ANIMATION_2 -->
+<span class="font-headline-md text-headline-md font-bold tracking-tighter text-primary uppercase">RADAR</span>
+</div>
+<div class="h-4 w-[1px] bg-outline-variant/40 mx-xs"></div>
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 bg-secondary-container rounded-full pulse-active shadow-[0_0_8px_rgba(5,231,119,0.8)]"></span>
+<span class="font-mono-label text-mono-label text-secondary uppercase tracking-widest">Live Feed Active</span>
+</div>
+</div>
+<nav class="hidden md:flex gap-lg">
+<a class="font-mono-label text-mono-label text-primary font-bold border-b-2 border-primary py-1" href="#">Dashboard</a>
+<a class="font-mono-label text-mono-label text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Threat Intelligence</a>
+<a class="font-mono-label text-mono-label text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Incidents</a>
+<a class="font-mono-label text-mono-label text-on-surface-variant font-medium hover:text-primary transition-colors" href="#">Assets</a>
+</nav>
+<div class="flex items-center gap-md">
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-all duration-300">
+<span class="material-symbols-outlined">shield</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-all duration-300">
+<span class="material-symbols-outlined">notifications</span>
+</button>
+<button class="p-2 rounded-lg text-on-surface-variant hover:bg-surface-container-high/50 transition-all duration-300">
+<span class="material-symbols-outlined">settings</span>
+</button>
+<div class="w-8 h-8 rounded-full border border-primary/30 p-[2px]">
+<img class="w-full h-full rounded-full object-cover" data-alt="A professional headshot of a female security analyst wearing a modern tactical headset, illuminated by the blue and green glow of surrounding computer screens in a high-tech dark operations center. The aesthetic is clean, cinematic, and professional, perfectly matching the RADAR platform's dark theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDSRQGFr1OGNk5ekbwYOWUawbo7zlrHMcvDyI10Vbqh7sBVuLZFN9MzQGpwYE1Q4XJbEdeSO5S-SHlukMB5kKlSHSf28P8nl6hAmnPrU2gtjLIYLpocZbUpj_c6Qhhh4IHEk_lpO6olOCBCEGl0TA4BRVaO9JiDK8e2W3ad4-3nIQnrLJfbYlEA-7DkntVNNDFufbahg36IgqqQLvGXDiKjYBC6uk0-19ow5NUFP3pT-VsNSb_Z-1KQZRUi4NCIDueQKgsztUKOr8s"/>
+</div>
+</div>
+</header>
+<main class="relative z-10 pt-20 px-grid-margin pb-24 max-w-[1920px] mx-auto space-y-grid-gutter">
+<!-- Main Section: Globe & Feed -->
+<div class="grid grid-cols-1 lg:grid-cols-10 gap-grid-gutter">
+<!-- Left: Globe -->
+<div class="lg:col-span-7 glass-card rounded-xl overflow-hidden relative min-h-[500px]">
+<div class="scan-line opacity-20"></div>
+<div class="absolute top-md left-md z-20 space-y-sm">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Global Threat Map</h2>
+<div class="glass-card bg-surface-container-low/40 p-md rounded-lg space-y-sm">
+<div class="flex items-center justify-between gap-xl">
+<span class="font-mono-label text-mono-label text-on-surface-variant">Top Origins</span>
+<span class="font-mono-data text-mono-data text-primary">Live Update</span>
+</div>
+<div class="space-y-xs">
+<div class="flex items-center justify-between">
+<span class="font-mono-data text-mono-data">Russia (RU)</span>
+<span class="font-mono-data text-mono-data text-error">4.2k pts</span>
+</div>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-error h-full" style="width: 85%"></div>
+</div>
+<div class="flex items-center justify-between">
+<span class="font-mono-data text-mono-data">China (CN)</span>
+<span class="font-mono-data text-mono-data text-tertiary">3.1k pts</span>
+</div>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="bg-tertiary h-full" style="width: 65%"></div>
+</div>
+</div>
+</div>
+</div>
+<div class="absolute top-md right-md z-20 flex flex-col gap-xs">
+<button class="w-10 h-10 glass-card flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary">add</span>
+</button>
+<button class="w-10 h-10 glass-card flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary">remove</span>
+</button>
+<button class="w-10 h-10 glass-card flex items-center justify-center hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary">public</span>
+</button>
+</div>
+<!-- STITCH_THREEJS_START:ANIMATION_4 class="absolute inset-0 w-full h-full" -->
+<div class="absolute inset-0 w-full h-full" style="display:block;">
+<script src="https://ajax.googleapis.com/ajax/libs/threejs/r125/three.min.js"></script>
+<div id="threejs-container-ANIMATION_4" style="width:100%;height:100%"></div>
+<script>
+(function() {
+  const container = document.getElementById('threejs-container-ANIMATION_4');
+  const devicePixelRatio = window.devicePixelRatio || 1;
+  const width = container.clientWidth || window.innerWidth;
+const height = container.clientHeight || window.innerHeight;
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+camera.position.z = 2.5;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+renderer.setSize(width, height);
+renderer.setPixelRatio(window.devicePixelRatio);
+container.appendChild(renderer.domElement);
+
+// Globe
+const globeGroup = new THREE.Group();
+scene.add(globeGroup);
+
+const sphereGeom = new THREE.SphereGeometry(1, 64, 64);
+const sphereMat = new THREE.MeshPhongMaterial({
+    color: 0x1a1a1a,
+    emissive: 0x223322,
+    specular: 0x111111,
+    shininess: 5
+});
+const globe = new THREE.Mesh(sphereGeom, sphereMat);
+globeGroup.add(globe);
+
+// Atmosphere glow
+const atmosphereGeom = new THREE.SphereGeometry(1.05, 64, 64);
+const atmosphereMat = new THREE.ShaderMaterial({
+    transparent: true,
+    side: THREE.BackSide,
+    uniforms: {
+        glowColor: { value: new THREE.Color(0x3b9eff) },
+        viewVector: { value: camera.position }
+    },
+    vertexShader: `
+        varying float intensity;
+        void main() {
+            vec3 vNormal = normalize(normalMatrix * normal);
+            intensity = pow(0.6 - dot(vNormal, vec3(0, 0, 1.0)), 2.0);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying float intensity;
+        uniform vec3 glowColor;
+        void main() {
+            gl_FragColor = vec4(glowColor, intensity);
+        }
+    `
+});
+const atmosphere = new THREE.Mesh(atmosphereGeom, atmosphereMat);
+globeGroup.add(atmosphere);
+
+// Attack Arcs
+const arcs = [];
+const arcCount = 24;
+
+function createArc() {
+    const isAttack = Math.random() > 0.5;
+    const color = isAttack ? 0xff4757 : 0x00e676;
+    
+    const startLat = (Math.random() - 0.5) * Math.PI;
+    const startLon = Math.random() * Math.PI * 2;
+    const endLat = (Math.random() - 0.5) * 0.5; // Converge toward center-ish
+    const endLon = Math.random() * 0.5;
+    
+    const start = new THREE.Vector3().setFromSphericalCoords(1, startLat, startLon);
+    const end = new THREE.Vector3().setFromSphericalCoords(1, endLat, endLon);
+    
+    const mid = start.clone().lerp(end, 0.5).normalize().multiplyScalar(1.2 + Math.random() * 0.3);
+    const curve = new THREE.QuadraticBezierCurve3(start, mid, end);
+    
+    const points = curve.getPoints(50);
+    const geometry = new THREE.BufferGeometry().setFromPoints(points);
+    const material = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.6 });
+    const line = new THREE.Line(geometry, material);
+    
+    const pulse = new THREE.Mesh(
+        new THREE.SphereGeometry(0.015, 8, 8),
+        new THREE.MeshBasicMaterial({ color: color })
+    );
+    
+    return { line, pulse, curve, progress: Math.random() };
+}
+
+for(let i=0; i<arcCount; i++) {
+    const arc = createArc();
+    globeGroup.add(arc.line);
+    globeGroup.add(arc.pulse);
+    arcs.push(arc);
+}
+
+// Protected Infrastructure Marker
+const markerGeom = new THREE.SphereGeometry(0.03, 16, 16);
+const markerMat = new THREE.MeshBasicMaterial({ color: 0x3b9eff });
+const marker = new THREE.Mesh(markerGeom, markerMat);
+marker.position.set(1, 0, 0); // Placeholder
+globeGroup.add(marker);
+
+const light = new THREE.DirectionalLight(0xffffff, 1);
+light.position.set(5, 3, 5);
+scene.add(light);
+scene.add(new THREE.AmbientLight(0x404040));
+
+function animate() {
+    requestAnimationFrame(animate);
+    globeGroup.rotation.y += 0.002;
+    
+    const time = Date.now() * 0.001;
+    marker.scale.setScalar(1 + Math.sin(time * 4) * 0.2);
+    
+    arcs.forEach(arc => {
+        arc.progress += 0.005;
+        if(arc.progress > 1) arc.progress = 0;
+        const pos = arc.curve.getPointAt(arc.progress);
+        arc.pulse.position.copy(pos);
+    });
+    
+    renderer.render(scene, camera);
+}
+animate();
+
+window.addEventListener('resize', () => {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+});
+})();
+</script>
+</div>
+<!-- STITCH_THREEJS_END:ANIMATION_4 -->
+<div class="absolute bottom-md left-md z-20 flex gap-md">
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="font-mono-label text-mono-label">Exploit</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-mono-label text-mono-label">Recon</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="font-mono-label text-mono-label">C2 Link</span>
+</div>
+</div>
+</div>
+<!-- Right: Live Feed -->
+<div class="lg:col-span-3 glass-card rounded-xl flex flex-col min-h-[500px]">
+<div class="p-md border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low/30">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Live Alert Feed</h2>
+<span class="font-mono-label text-mono-label bg-surface-container-highest px-2 py-1 rounded">248 EPS</span>
+</div>
+<div class="flex-grow terminal-scroll overflow-y-auto p-md font-mono-data text-mono-data text-on-surface-variant space-y-md">
+<!-- Feed Item -->
+<div class="space-y-1 group cursor-pointer hover:bg-primary/5 p-sm rounded transition-colors border-l-2 border-error">
+<div class="flex items-center justify-between">
+<span class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-error font-bold">BRUTE_FORCE</span>
+</span>
+<span class="opacity-50">14:22:01</span>
+</div>
+<div class="flex justify-between text-on-surface">
+<span>Src: 185.22.45.10</span>
+<span class="text-primary">ID: 4429</span>
+</div>
+<div class="text-[11px] opacity-40">Target: SSH_SERVER_PROD_04</div>
+</div>
+<!-- Feed Item -->
+<div class="space-y-1 group cursor-pointer hover:bg-primary/5 p-sm rounded transition-colors border-l-2 border-tertiary">
+<div class="flex items-center justify-between">
+<span class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-tertiary font-bold">C2_BEACON</span>
+</span>
+<span class="opacity-50">14:21:44</span>
+</div>
+<div class="flex justify-between text-on-surface">
+<span>Src: 10.0.4.112</span>
+<span class="text-primary">ID: 4428</span>
+</div>
+<div class="text-[11px] opacity-40">Domain: c2.hiddencloud.io</div>
+</div>
+<!-- Feed Item -->
+<div class="space-y-1 group cursor-pointer hover:bg-primary/5 p-sm rounded transition-colors border-l-2 border-primary">
+<div class="flex items-center justify-between">
+<span class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-primary"></span>
+<span class="text-primary font-bold">SQL_INJECT</span>
+</span>
+<span class="opacity-50">14:21:30</span>
+</div>
+<div class="flex justify-between text-on-surface">
+<span>Src: 92.45.1.221</span>
+<span class="text-primary">ID: 4427</span>
+</div>
+<div class="text-[11px] opacity-40">Method: POST /api/v1/auth</div>
+</div>
+<!-- Feed Item -->
+<div class="space-y-1 group cursor-pointer hover:bg-primary/5 p-sm rounded transition-colors border-l-2 border-error">
+<div class="flex items-center justify-between">
+<span class="flex items-center gap-xs">
+<span class="w-2 h-2 rounded-full bg-error"></span>
+<span class="text-error font-bold">RANSOM_SIM</span>
+</span>
+<span class="opacity-50">14:20:55</span>
+</div>
+<div class="flex justify-between text-on-surface">
+<span>Src: 10.0.1.55</span>
+<span class="text-primary">ID: 4426</span>
+</div>
+<div class="text-[11px] opacity-40">Status: BLOCKED_VIGIL</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Middle Section: Stats -->
+<div class="grid grid-cols-2 md:grid-cols-4 gap-grid-gutter">
+<div class="glass-card p-lg rounded-xl flex flex-col gap-sm">
+<span class="font-mono-label text-mono-label text-on-surface-variant uppercase">Total Alerts</span>
+<div class="flex items-baseline gap-sm">
+<span class="font-display-lg text-[32px] font-bold text-on-surface" id="stat-total">1,248</span>
+<span class="text-secondary-fixed-dim text-body-sm flex items-center">
+<span class="material-symbols-outlined text-[16px]">arrow_upward</span> 12%
+                    </span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-primary glow-blue" style="width: 70%"></div>
+</div>
+</div>
+<div class="glass-card p-lg rounded-xl flex flex-col gap-sm border-error/20">
+<span class="font-mono-label text-mono-label text-on-surface-variant uppercase">Critical</span>
+<div class="flex items-baseline gap-sm">
+<span class="font-display-lg text-[32px] font-bold text-error" id="stat-critical">42</span>
+<span class="text-error text-body-sm flex items-center">
+<span class="material-symbols-outlined text-[16px]">arrow_upward</span> 4%
+                    </span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-error glow-red" style="width: 45%"></div>
+</div>
+</div>
+<div class="glass-card p-lg rounded-xl flex flex-col gap-sm">
+<span class="font-mono-label text-mono-label text-on-surface-variant uppercase">False Positives</span>
+<div class="flex items-baseline gap-sm">
+<span class="font-display-lg text-[32px] font-bold text-tertiary" id="stat-fp">128</span>
+<span class="text-secondary text-body-sm flex items-center">
+<span class="material-symbols-outlined text-[16px]">arrow_downward</span> 8%
+                    </span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-tertiary" style="width: 30%"></div>
+</div>
+</div>
+<div class="glass-card p-lg rounded-xl flex flex-col gap-sm">
+<span class="font-mono-label text-mono-label text-on-surface-variant uppercase">Correlated Incidents</span>
+<div class="flex items-baseline gap-sm">
+<span class="font-display-lg text-[32px] font-bold text-secondary" id="stat-correlated">14</span>
+<span class="text-on-surface-variant text-body-sm">Stable</span>
+</div>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="h-full bg-secondary glow-green" style="width: 60%"></div>
+</div>
+</div>
+</div>
+<!-- Matrix Section: MITRE -->
+<div class="glass-card rounded-xl overflow-hidden">
+<div class="p-md border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low/30">
+<div class="flex items-center gap-md">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">MITRE ATT&amp;CK® Coverage</h2>
+<span class="text-body-sm text-on-surface-variant bg-surface-container px-2 py-0.5 rounded">v13.1 Matrix</span>
+</div>
+<div class="flex gap-md">
+<div class="flex items-center gap-xs">
+<span class="w-3 h-3 rounded bg-error"></span>
+<span class="font-mono-label text-mono-label">Exploited</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="w-3 h-3 rounded bg-secondary-container"></span>
+<span class="font-mono-label text-mono-label">Covered</span>
+</div>
+<div class="flex items-center gap-xs">
+<span class="w-3 h-3 rounded bg-outline-variant/30"></span>
+<span class="font-mono-label text-mono-label">Unmapped</span>
+</div>
+</div>
+</div>
+<div class="p-grid-gutter grid grid-cols-5 gap-grid-gutter">
+<!-- Tactic Columns -->
+<div class="space-y-md">
+<h3 class="font-mono-label text-mono-label text-primary pb-sm border-b border-primary/20">Initial Access</h3>
+<div class="grid grid-cols-1 gap-xs">
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Drive-by Compromise</div>
+<div class="h-6 bg-error border border-error rounded flex items-center px-2 text-[10px] font-mono-data text-on-error">Phishing: Attachment</div>
+<div class="h-6 bg-outline-variant/10 border border-outline-variant/20 rounded flex items-center px-2 text-[10px] font-mono-data opacity-40">Public-Facing Apps</div>
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Valid Accounts</div>
+</div>
+</div>
+<div class="space-y-md">
+<h3 class="font-mono-label text-mono-label text-primary pb-sm border-b border-primary/20">Execution</h3>
+<div class="grid grid-cols-1 gap-xs">
+<div class="h-6 bg-error border border-error rounded flex items-center px-2 text-[10px] font-mono-data text-on-error">Command Interp</div>
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">PowerShell</div>
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Scheduled Task</div>
+<div class="h-6 bg-outline-variant/10 border border-outline-variant/20 rounded flex items-center px-2 text-[10px] font-mono-data opacity-40">System Services</div>
+</div>
+</div>
+<div class="space-y-md">
+<h3 class="font-mono-label text-mono-label text-primary pb-sm border-b border-primary/20">Persistence</h3>
+<div class="grid grid-cols-1 gap-xs">
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Boot Or Logon</div>
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Create Process</div>
+<div class="h-6 bg-error border border-error rounded flex items-center px-2 text-[10px] font-mono-data text-on-error">Hijack Exec Flow</div>
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Server Software</div>
+</div>
+</div>
+<div class="space-y-md">
+<h3 class="font-mono-label text-mono-label text-primary pb-sm border-b border-primary/20">Discovery</h3>
+<div class="grid grid-cols-1 gap-xs">
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Network Discovery</div>
+<div class="h-6 bg-outline-variant/10 border border-outline-variant/20 rounded flex items-center px-2 text-[10px] font-mono-data opacity-40">Permission Groups</div>
+<div class="h-6 bg-outline-variant/10 border border-outline-variant/20 rounded flex items-center px-2 text-[10px] font-mono-data opacity-40">Process Discovery</div>
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Remote System</div>
+</div>
+</div>
+<div class="space-y-md">
+<h3 class="font-mono-label text-mono-label text-primary pb-sm border-b border-primary/20">Defense Evasion</h3>
+<div class="grid grid-cols-1 gap-xs">
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Deobfuscate File</div>
+<div class="h-6 bg-error border border-error rounded flex items-center px-2 text-[10px] font-mono-data text-on-error">Indicator Removal</div>
+<div class="h-6 bg-outline-variant/10 border border-outline-variant/20 rounded flex items-center px-2 text-[10px] font-mono-data opacity-40">Masquerading</div>
+<div class="h-6 bg-secondary-container/20 border border-secondary-container/40 rounded flex items-center px-2 text-[10px] font-mono-data">Process Injection</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Section: Playbook & Chart -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-grid-gutter">
+<!-- Left: Playbook -->
+<div class="glass-card rounded-xl flex flex-col">
+<div class="p-md border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low/30">
+<div class="flex items-center gap-sm">
+<span class="material-symbols-outlined text-primary">auto_fix</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">AI Incident Playbook</h2>
+</div>
+<button class="flex items-center gap-xs bg-primary text-on-primary px-4 py-2 rounded-lg font-mono-label text-mono-label hover:brightness-110 active:scale-95 transition-all">
+<span class="material-symbols-outlined text-sm">bolt</span>
+                        GENERATE PLAYBOOK
+                    </button>
+</div>
+<div class="p-lg space-y-md">
+<div class="flex gap-md items-start">
+<div class="w-8 h-8 rounded bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+<span class="font-mono-data text-primary">01</span>
+</div>
+<div>
+<h4 class="font-body-md text-on-surface font-bold">Isolate Source Node</h4>
+<p class="text-body-sm text-on-surface-variant">Host 10.0.1.55 shows lateral movement signs. Quarantining via VLAN 99.</p>
+</div>
+</div>
+<div class="flex gap-md items-start">
+<div class="w-8 h-8 rounded bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+<span class="font-mono-data text-primary">02</span>
+</div>
+<div>
+<h4 class="font-body-md text-on-surface font-bold">Memory Dump Analysis</h4>
+<p class="text-body-sm text-on-surface-variant">Volatility scan initiated on suspicious process 'svchost.exe' (PID: 2942).</p>
+</div>
+</div>
+<div class="flex gap-md items-start">
+<div class="w-8 h-8 rounded bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+<span class="font-mono-data text-primary">03</span>
+</div>
+<div>
+<h4 class="font-body-md text-on-surface font-bold">Block External C2 IP</h4>
+<p class="text-body-sm text-on-surface-variant">IP 185.22.45.10 blacklisted across all perimeter firewalls.</p>
+</div>
+</div>
+</div>
+</div>
+<!-- Right: Detection Chart -->
+<div class="glass-card rounded-xl flex flex-col">
+<div class="p-md border-b border-outline-variant/30 flex justify-between items-center bg-surface-container-low/30">
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Detection Coverage</h2>
+<span class="font-mono-label text-mono-label text-on-surface-variant">Last 24 Hours</span>
+</div>
+<div class="flex-grow p-lg flex items-center justify-center relative min-h-[200px]">
+<!-- Static representation of an animated line chart -->
+<svg class="w-full h-full text-secondary overflow-visible drop-shadow-[0_0_8px_rgba(5,231,119,0.4)]" viewbox="0 0 400 150">
+<path d="M0,120 Q50,110 80,90 T150,70 T220,95 T300,40 T400,60" fill="none" stroke="currentColor" stroke-linecap="round" stroke-width="3"></path>
+<path d="M0,120 Q50,110 80,90 T150,70 T220,95 T300,40 T400,60 V150 H0 Z" fill="url(#gradient-chart)" opacity="0.1" stroke="none"></path>
+<defs>
+<lineargradient id="gradient-chart" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="currentColor"></stop>
+<stop offset="100%" stop-color="transparent"></stop>
+</lineargradient>
+</defs>
+<!-- Grid lines -->
+<g class="text-outline-variant/20">
+<line stroke="currentColor" stroke-dasharray="4" x1="0" x2="400" y1="0" y2="0"></line>
+<line stroke="currentColor" stroke-dasharray="4" x1="0" x2="400" y1="50" y2="50"></line>
+<line stroke="currentColor" stroke-dasharray="4" x1="0" x2="400" y1="100" y2="100"></line>
+<line stroke="currentColor" stroke-dasharray="4" x1="0" x2="400" y1="150" y2="150"></line>
+</g>
+</svg>
+<div class="absolute top-md right-md flex flex-col items-end">
+<span class="font-display-lg text-headline-md font-bold text-secondary">98.4%</span>
+<span class="font-mono-label text-mono-label text-on-surface-variant">SYSTEM UPTIME</span>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<footer class="fixed bottom-0 left-0 w-full z-50 flex justify-between items-center px-grid-margin h-20 bg-surface-container-low/90 backdrop-blur-md border-t border-outline-variant/30 shadow-[0_-4px_20px_rgba(0,0,0,0.4)]">
+<div class="flex items-center gap-md w-full justify-center">
+<!-- Cycle Stepper -->
+<div class="flex items-center gap-base">
+<div class="flex flex-col items-center gap-xs group opacity-60">
+<div class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">search</span>
+</div>
+<span class="font-mono-label text-mono-label">SCAN</span>
+</div>
+<div class="w-12 h-[1px] bg-outline-variant/30 mt-[-18px]"></div>
+<div class="flex flex-col items-center gap-xs group opacity-60">
+<div class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">strikethrough_s</span>
+</div>
+<span class="font-mono-label text-mono-label">ATTACK</span>
+</div>
+<div class="w-12 h-[1px] bg-outline-variant/30 mt-[-18px]"></div>
+<div class="flex flex-col items-center gap-xs scale-110 px-4 py-1 bg-secondary-container/10 border border-secondary-container/30 rounded-lg shadow-[0_0_15px_rgba(5,231,119,0.2)]">
+<div class="w-8 h-8 rounded-full bg-secondary-container text-on-secondary-container flex items-center justify-center pulse-active">
+<span class="material-symbols-outlined text-[18px]" style="font-variation-settings: 'FILL' 1;">radar</span>
+</div>
+<span class="font-mono-label text-mono-label text-secondary font-bold">DETECT</span>
+</div>
+<div class="w-12 h-[1px] bg-outline-variant/30 mt-[-18px]"></div>
+<div class="flex flex-col items-center gap-xs group opacity-60">
+<div class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">healing</span>
+</div>
+<span class="font-mono-label text-mono-label">REMEDIATE</span>
+</div>
+<div class="w-12 h-[1px] bg-outline-variant/30 mt-[-18px]"></div>
+<div class="flex flex-col items-center gap-xs group opacity-60">
+<div class="w-8 h-8 rounded border border-outline-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-[18px]">replay</span>
+</div>
+<span class="font-mono-label text-mono-label">RE-TEST</span>
+</div>
+</div>
+</div>
+<div class="absolute right-grid-margin flex items-center gap-md">
+<div class="text-right">
+<p class="font-mono-data text-[10px] text-on-surface-variant">Uptime: 14:22:04</p>
+<p class="font-mono-data text-[10px] text-on-surface-variant">User: Analyst_04</p>
+</div>
+<div class="h-8 w-[1px] bg-outline-variant/30"></div>
+<button class="bg-surface-container-highest p-2 rounded-lg hover:bg-primary/20 transition-colors">
+<span class="material-symbols-outlined text-primary">terminal</span>
+</button>
+</div>
+</footer>
+<script>
+        // Micro-interactions and animated count-ups
+        function animateValue(id, start, end, duration) {
+            let obj = document.getElementById(id);
+            let range = end - start;
+            let minTimer = 50;
+            let stepTime = Math.abs(Math.floor(duration / range));
+            stepTime = Math.max(stepTime, minTimer);
+            let startTime = new Date().getTime();
+            let endTime = startTime + duration;
+            let timer;
+
+            function run() {
+                let now = new Date().getTime();
+                let remaining = Math.max((endTime - now) / duration, 0);
+                let value = Math.round(end - (remaining * range));
+                obj.innerHTML = value.toLocaleString();
+                if (value == end) {
+                    clearInterval(timer);
+                }
+            }
+
+            timer = setInterval(run, stepTime);
+            run();
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            animateValue("stat-total", 1000, 1248, 2000);
+            animateValue("stat-critical", 0, 42, 2000);
+            animateValue("stat-fp", 50, 128, 2000);
+            animateValue("stat-correlated", 0, 14, 2000);
+        });
+
+        // Simulating scrolling terminal feed
+        const feedContainer = document.querySelector('.terminal-scroll');
+        setInterval(() => {
+            if(feedContainer) {
+                const first = feedContainer.firstElementChild;
+                feedContainer.appendChild(first.cloneNode(true));
+                if(feedContainer.children.length > 10) {
+                    feedContainer.removeChild(feedContainer.firstElementChild);
+                }
+                feedContainer.scrollTop = feedContainer.scrollHeight;
+            }
+        }, 5000);
+    </script>
+</body></html>
