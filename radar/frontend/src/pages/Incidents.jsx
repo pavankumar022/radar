@@ -3,7 +3,8 @@
  * Shows incident list + AI playbook detail view.
  * Matches the provided design screenshot.
  */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { jsPDF } from 'jspdf'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useStore } from '../lib/store'
 import { api } from '../lib/api'
@@ -61,20 +62,6 @@ function IncidentList({ onSelect, selectedId, active, onClearAll }) {
   )
 }
 
-// ─── Playbook Detail ──────────────────────────────────────────────────────────
-const loadJsPDF = () => {
-  return new Promise((resolve) => {
-    if (window.jspdf) {
-      resolve(window.jspdf);
-      return;
-    }
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-    script.onload = () => resolve(window.jspdf);
-    document.body.appendChild(script);
-  });
-};
-
 function PlaybookDetail({
   alert,
   playbook,
@@ -94,10 +81,8 @@ function PlaybookDetail({
     }
   }, [playbook])
 
-  const handleDownloadPDF = async () => {
+  const handleDownloadPDF = () => {
     if (!report) return;
-    const jspdfModule = await loadJsPDF();
-    const { jsPDF } = jspdfModule;
     const doc = new jsPDF();
 
     doc.setFont("courier", "bold");
@@ -376,35 +361,39 @@ export default function Incidents() {
   const [report, setReport] = useState(null)
   const [loadingReport, setLoadingReport] = useState(false)
 
-  // Ensure latest alerts are loaded if state.alerts is empty
-  useEffect(() => {
-    if (state.alerts.length === 0) {
-      api.alerts.latest(50)
-        .then(data => {
-          if (data?.events && Array.isArray(data.events)) {
-            [...data.events].reverse().forEach(ev => {
-              dispatch({ type: 'NEW_ALERT', payload: { event: ev } })
-            })
-          }
-        })
-        .catch(() => {})
-    }
-  }, [state.alerts.length, dispatch])
+  // Track which alertId we've already initialised — prevents re-running on every new WS event
+  const initialisedAlertId = useRef(null)
 
-  // If alertId in URL, auto-select that alert
+  // If alertId in URL changes, auto-select that alert (run ONLY when alertId changes)
   useEffect(() => {
-    if (alertId) {
+    if (alertId && alertId !== initialisedAlertId.current) {
       const found = state.alerts.find(a => a.id === alertId)
       if (found) {
+        initialisedAlertId.current = alertId
         setSelectedAlert(found)
         setReport(null)
+        setPlaybook(null)
         // Try to load existing playbook
         api.playbook.get(alertId).then(setPlaybook).catch(() => {})
       }
     }
-  }, [alertId, state.alerts])
+    if (!alertId) {
+      initialisedAlertId.current = null
+    }
+  }, [alertId]) // ← intentionally omit state.alerts to avoid resetting report on new events
+
+  // Keep selectedAlert data fresh as store updates, WITHOUT touching report/playbook
+  useEffect(() => {
+    if (selectedAlert) {
+      const fresh = state.alerts.find(a => a.id === selectedAlert.id)
+      if (fresh && fresh !== selectedAlert) {
+        setSelectedAlert(fresh)
+      }
+    }
+  }, [state.alerts])
 
   const handleSelect = (ev) => {
+    initialisedAlertId.current = ev.id   // prevent URL effect from re-triggering
     setSelectedAlert(ev)
     setPlaybook(null)
     setReport(null)

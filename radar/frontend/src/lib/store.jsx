@@ -95,8 +95,12 @@ function reducer(state, action) {
     }
 
     case 'NEW_ALERT': {
+      const newAlert = action.payload.event
+      if (state.alerts.some(a => a.id === newAlert.id)) {
+        return state
+      }
       // Prepend new alert (newest first), cap at MAX_ALERTS
-      const alerts = [action.payload.event, ...state.alerts].slice(0, MAX_ALERTS)
+      const alerts = [newAlert, ...state.alerts].slice(0, MAX_ALERTS)
       return { ...state, alerts }
     }
 

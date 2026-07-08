@@ -102,6 +102,7 @@
 ---
 
 ### 1️⃣ Clone the Repository & Configure Environment
+
 ```bash
 # Clone the repository
 git clone https://github.com/pavankumar022/radar.git
@@ -111,52 +112,75 @@ cd radar
 cd radar
 
 # Copy environment variables file
+# Windows (PowerShell):
+Copy-Item .env.example .env
+# Linux / macOS:
 cp .env.example .env
 ```
-*(Open `.env` in a text editor to customize ports or add API keys if needed; it works out-of-the-box with default settings).*
+
+Open `.env` in a text editor to add your **Gemini API key** and customize ports if needed.  
+The app works out-of-the-box with default settings (no key required for synthetic mode).
 
 ---
 
 ### 2️⃣ Backend Setup
+
 ```bash
 # Create virtual environment
 python -m venv .venv
 
 # Activate virtual environment
-# On Windows (PowerShell):
+# Windows (PowerShell):
 .venv\Scripts\activate
-# On Linux/macOS:
+# Linux / macOS:
 source .venv/bin/activate
 
-# Install dependencies (updated with loose constraints to support newer Python versions)
+# Install Python dependencies
 pip install -r backend/requirements.txt
 
-# Start FastAPI backend server
-uvicorn backend.main:app --host 127.0.0.1 --port 8080
+# Start FastAPI backend (with hot-reload for development)
+# Windows (PowerShell) — use the venv python directly:
+.venv\Scripts\python.exe -m uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
+# Linux / macOS:
+uvicorn backend.main:app --host 0.0.0.0 --port 8080 --reload
 ```
-> [!TIP]
-> On the first startup, the server automatically initializes SQLite (`radar.db`) and seeds it with **5,000 synthetic security events**. We optimized this using SQL transaction batch inserts, completing the seed in **under 1 second** (down from 1.5 minutes).
 
-Backend API documentation will be available at: **`http://localhost:8080/api/docs`**
+> [!TIP]
+> On the first startup, the server automatically initializes SQLite (`radar.db`) and seeds it with synthetic security events.
+> Live packet capture also starts automatically alongside the server — no extra steps required.
+
+Backend API docs available at: **`http://localhost:8080/api/docs`**
 
 ---
 
 ### 3️⃣ Frontend Setup
-In a new terminal window:
+
+Open a **new terminal window**:
+
 ```bash
 # Navigate to frontend directory
 cd radar/frontend
 
-# Install node modules
+# Install Node dependencies (only needed once)
 npm install
 
 # Start Vite dev server
 npm run dev
 ```
+
 Open your browser at: **`http://localhost:5173`**
 
 ---
 
+### ✅ You're Running!
+
+| Service | URL |
+|---------|-----|
+| 🖥️ Frontend Dashboard | http://localhost:5173 |
+| ⚙️ Backend API | http://localhost:8080 |
+| 📖 Swagger Docs | http://localhost:8080/api/docs |
+
+---
 
 ## 💣 Testing Real Security Attacks
 
@@ -196,6 +220,13 @@ Triggers **`SSH_BRUTE_FORCE (T1110)`** critical alerts and generates an Incident
 - **Backend**: Python 3.11, FastAPI, Uvicorn, Asyncio, WebSockets
 - **Database**: SQLite (WAL mode) + In-memory L1 cache
 - **Network Capture**: Python Socket Listener / Raw Packet Parsing
+
+---
+
+## 📝 Changelog
+
+### v1.1.0 — Bug Fixes & Stability
+- **Fix: Generate Report no longer resets on new events** — The `Incidents` page `useEffect` previously depended on `state.alerts`, causing it to re-run (and call `setReport(null)`) every time a new WebSocket event arrived. Fixed by tracking initialised alert IDs via a `useRef` so the effect only fires on actual URL navigation, not on incoming events. A second lightweight effect keeps the selected alert data fresh without touching report or playbook state.
 
 ---
 
